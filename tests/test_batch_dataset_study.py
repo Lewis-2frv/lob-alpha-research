@@ -22,7 +22,6 @@ from lob_alpha.manifest import sha256_file, write_json
 from lob_alpha.reporting import build_research_report
 from lob_alpha.study import expanding_session_folds, freeze_candidate
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

@@ -8,7 +8,6 @@ import yaml
 
 from lob_alpha.config import ConfigurationError, load_config
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

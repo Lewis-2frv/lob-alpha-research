@@ -13,7 +13,6 @@ from lob_alpha.fixture import make_mbp10_fixture
 from lob_alpha.models import fit_ridge, score_regression
 from lob_alpha.pipeline import process_session
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -72,6 +71,31 @@ class PipelineAndModelTests(unittest.TestCase):
         self.assertEqual(len(predictions), metrics.rows)
         self.assertTrue(np.isfinite(metrics.mae_ticks))
         self.assertTrue(np.isfinite(metrics.rmse_ticks))
+
+    def test_microsecond_and_nanosecond_inputs_produce_identical_features(self) -> None:
+        config = load_config(ROOT / "configs/base.yaml")
+        events_ns = make_mbp10_fixture(periods=600)
+        events_us = events_ns.copy()
+        events_us["ts_recv"] = pd.Series(events_us["ts_recv"].array.as_unit("us"))
+        events_us["ts_event"] = pd.Series(events_us["ts_event"].array.as_unit("us"))
+        result_ns = process_session(
+            events_ns,
+            config,
+            session_date=date(2026, 3, 16),
+            tick_size=0.25,
+        )
+        result_us = process_session(
+            events_us,
+            config,
+            session_date=date(2026, 3, 16),
+            tick_size=0.25,
+        )
+        columns = model_feature_columns(config.features)
+        pd.testing.assert_frame_equal(
+            result_ns.data[columns],
+            result_us.data[columns],
+            check_dtype=False,
+        )
 
 
 if __name__ == "__main__":

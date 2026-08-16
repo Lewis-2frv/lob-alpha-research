@@ -9,7 +9,6 @@ from lob_alpha.config import load_config
 from lob_alpha.definitions import DefinitionError, verify_contract_definition
 from lob_alpha.ingest import definition_window
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

@@ -14,7 +14,6 @@ from lob_alpha.labels import build_labels
 from lob_alpha.sampling import sample_decision_states
 from lob_alpha.schema import canonicalize_mbp10
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

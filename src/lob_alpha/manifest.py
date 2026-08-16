@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from numbers import Real
 from datetime import UTC, datetime
+from numbers import Real
 from pathlib import Path
 from typing import Any
 

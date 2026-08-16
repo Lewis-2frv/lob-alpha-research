@@ -7,7 +7,6 @@ import pandas as pd
 
 from .execution import InsufficientDepthError, round_trip_pnl
 
-
 TRADE_COLUMNS = [
     "decision_time",
     "position_side",
@@ -33,7 +32,7 @@ def _book_asof(
     *,
     maximum_age_ms: int,
 ) -> tuple[pd.Series, pd.Timestamp] | None:
-    target_ns = target_time.value
+    target_ns = target_time.as_unit("ns").value
     index = int(np.searchsorted(event_ns, target_ns, side="right") - 1)
     if index < 0:
         return None
@@ -79,7 +78,7 @@ def simulate_marketable_strategy(
         drop=True
     )
     ordered_events["ts_recv"] = pd.to_datetime(ordered_events["ts_recv"], utc=True)
-    event_ns = ordered_events["ts_recv"].astype("int64").to_numpy()
+    event_ns = pd.DatetimeIndex(ordered_events["ts_recv"]).as_unit("ns").asi8
     ordered_signals = signals.sort_values("decision_time", kind="stable").copy()
     ordered_signals["decision_time"] = pd.to_datetime(ordered_signals["decision_time"], utc=True)
 

@@ -6,7 +6,6 @@ from pathlib import Path
 from lob_alpha.config import load_config
 from lob_alpha.ingest import CostLimitError, download_stream, estimate_cost, request_parameters
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 import gzip
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
-from typing import Iterable
 
 import pandas as pd
 
@@ -17,7 +17,6 @@ from .features import model_feature_columns
 from .ingest import load_events
 from .manifest import build_run_manifest, sha256_file, write_json
 from .pipeline import process_session, write_table
-
 
 _DATE_PATTERNS = (
     re.compile(r"(?<!\d)(20\d{2})-(\d{2})-(\d{2})(?!\d)"),
@@ -230,5 +229,5 @@ def load_catalog(path: str | Path, *, verify_hashes: bool = True) -> list[Catalo
         if not data_path.exists():
             raise FileNotFoundError(data_path)
         if verify_hashes and sha256_file(data_path) != entry.sha256:
-            raise IOError(f"processed file hash changed after cataloging: {data_path}")
+            raise OSError(f"processed file hash changed after cataloging: {data_path}")
     return sorted(entries, key=lambda item: item.session_date)

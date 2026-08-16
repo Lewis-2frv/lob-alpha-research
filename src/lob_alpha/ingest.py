@@ -200,7 +200,7 @@ def download_batch_job(
             for block in iter(lambda: handle.read(1024 * 1024), b""):
                 digest.update(block)
         if digest.hexdigest() != expected:
-            raise IOError(f"SHA-256 mismatch for downloaded batch file: {path}")
+            raise OSError(f"SHA-256 mismatch for downloaded batch file: {path}")
     return downloaded, remote_files
 
 

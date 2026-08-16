@@ -14,8 +14,11 @@ def _trailing_sum(
     decision_times: pd.Series,
     window_ms: int,
 ) -> np.ndarray:
-    event_ns = pd.to_datetime(event_times, utc=True).astype("int64").to_numpy()
-    decision_ns = pd.to_datetime(decision_times, utc=True).astype("int64").to_numpy()
+    # Pandas 3 preserves input timestamp resolution (often microseconds) rather
+    # than always normalizing to nanoseconds. Convert explicitly before integer
+    # arithmetic so window lengths have identical meaning across pandas versions.
+    event_ns = pd.DatetimeIndex(pd.to_datetime(event_times, utc=True)).as_unit("ns").asi8
+    decision_ns = pd.DatetimeIndex(pd.to_datetime(decision_times, utc=True)).as_unit("ns").asi8
     cumulative = np.concatenate(([0.0], np.cumsum(values, dtype=float)))
     end = np.searchsorted(event_ns, decision_ns, side="right")
     start = np.searchsorted(event_ns, decision_ns - window_ms * 1_000_000, side="right")

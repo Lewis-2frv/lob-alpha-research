@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -471,15 +471,15 @@ def run_validation_stage(
 
     selection = _read_selection(train_selection_path, expected_stage="train_only")
     if selection["catalog_sha256"] != sha256_file(catalog_path):
-        raise IOError("catalog changed after train selection")
+        raise OSError("catalog changed after train selection")
     if selection["config_sha256"] != sha256_file(config.source_path):
-        raise IOError("configuration changed after train selection")
+        raise OSError("configuration changed after train selection")
     entries = load_catalog(catalog_path)
     train_entries = _entries_for_split(entries, "train")
     validation_entries = _entries_for_split(entries, "validation")
     quantile_path = Path(train_selection_path).with_name("train_quantile_edges.json")
     if sha256_file(quantile_path) != selection.get("quantile_edges_sha256"):
-        raise IOError("train-fitted quantile edges changed before validation")
+        raise OSError("train-fitted quantile edges changed before validation")
     quantile_artifact = json.loads(quantile_path.read_text(encoding="utf-8"))
     predictions, metrics = _predict_split(
         config,
@@ -642,9 +642,9 @@ def freeze_candidate(
         raise FileExistsError(f"refusing to overwrite frozen candidate: {output}")
     candidate = _read_selection(candidate_path, expected_stage="validation_selected")
     if candidate["catalog_sha256"] != sha256_file(catalog_path):
-        raise IOError("catalog changed before freeze")
+        raise OSError("catalog changed before freeze")
     if candidate["config_sha256"] != sha256_file(config.source_path):
-        raise IOError("configuration changed before freeze")
+        raise OSError("configuration changed before freeze")
     payload = {
         **candidate,
         "stage": "frozen_for_holdout",
@@ -672,9 +672,9 @@ def run_holdout_stage(
         raise FileExistsError(f"refusing to overwrite existing holdout output: {destination}")
     frozen = _read_selection(frozen_candidate_path, expected_stage="frozen_for_holdout")
     if frozen["catalog_sha256"] != sha256_file(catalog_path):
-        raise IOError("catalog changed after candidate freeze")
+        raise OSError("catalog changed after candidate freeze")
     if frozen["config_sha256"] != sha256_file(config.source_path):
-        raise IOError("configuration changed after candidate freeze")
+        raise OSError("configuration changed after candidate freeze")
     entries = load_catalog(catalog_path)
     development = [entry for entry in entries if entry.split in {"train", "validation"}]
     holdout = _entries_for_split(entries, "holdout")

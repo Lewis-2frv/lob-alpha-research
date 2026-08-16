@@ -59,7 +59,7 @@ def canonicalize_mbp10(frame: pd.DataFrame) -> pd.DataFrame:
         raise SchemaError(f"missing MBP-10 fields: {missing}")
 
     for column in ("ts_recv", "ts_event"):
-        df[column] = pd.to_datetime(df[column], utc=True, errors="coerce")
+        df[column] = pd.to_datetime(df[column], utc=True, errors="coerce").dt.as_unit("ns")
     if df[["ts_recv", "ts_event"]].isna().any().any():
         raise SchemaError("ts_recv and ts_event must be valid timezone-aware timestamps")
 

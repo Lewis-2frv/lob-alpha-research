@@ -19,6 +19,10 @@ from lob_alpha.fixture import make_mbp10_fixture
 class BacktestAndAnalysisTests(unittest.TestCase):
     def test_strategy_is_nonoverlapping_and_timestamp_causal(self) -> None:
         events = make_mbp10_fixture(periods=500)
+        # Pandas 3 commonly produces datetime64[us, UTC]. Force that resolution
+        # here so nanosecond/microsecond mismatches cannot regress silently.
+        events["ts_recv"] = pd.Series(events["ts_recv"].array.as_unit("us"))
+        events["ts_event"] = pd.Series(events["ts_event"].array.as_unit("us"))
         decisions = pd.DataFrame(
             {
                 "decision_time": events.iloc[::5]["ts_recv"].to_numpy(),
