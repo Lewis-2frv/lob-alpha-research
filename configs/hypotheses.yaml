@@ -1,0 +1,34 @@
+version: 0.1
+registered_before_holdout: true
+hypotheses:
+  H1_static_book:
+    question: Do queue/depth imbalance and microprice predict future midpoint changes?
+    expected_direction: Positive imbalance and microprice displacement predict same-direction moves.
+    falsification:
+      - No monotonic train/validation decile relationship.
+      - Day-clustered validation effect is centered near zero or changes sign.
+  H2_dynamic_flow:
+    question: Does recent OFI or signed trade flow add information beyond static book state?
+    expected_direction: Positive flow predicts upward moves and negative flow predicts downward moves.
+    falsification:
+      - No paired daily validation improvement over static features.
+      - Relationship is concentrated in one session.
+  H3_combined_forecast:
+    question: Does a regularized linear combination improve chronological out-of-sample prediction?
+    expected_direction: Combined ridge forecast improves IC and high-confidence markouts.
+    falsification:
+      - Validation gain disappears relative to the best raw signal.
+      - Improvement is only aggregate and lacks day-level breadth.
+  H4_execution:
+    question: Does any forecast confidence threshold survive executable prices, fees and latency?
+    expected_direction: Higher confidence increases conditional gross edge.
+    falsification:
+      - No threshold clears spread and displayed-depth execution.
+      - Break-even fee or latency is economically implausible.
+  H5_stability:
+    question: Is performance stable across days and pre-specified liquidity/volatility regimes?
+    expected_direction: Signal sign persists with varying magnitude.
+    falsification:
+      - Leave-one-day-out removal erases the result.
+      - Result exists only in a post-selected narrow regime.
+

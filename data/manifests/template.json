@@ -1,0 +1,17 @@
+{
+  "provider": "databento",
+  "dataset": "GLBX.MDP3",
+  "schema": "mbp-10",
+  "symbols": ["ESM6"],
+  "stype_in": "raw_symbol",
+  "request_start": null,
+  "request_end": null,
+  "estimated_cost_usd": null,
+  "downloaded_utc": null,
+  "provider_client_version": null,
+  "file_name": null,
+  "file_size_bytes": null,
+  "sha256": null,
+  "notes": "Licensed raw data is not committed to Git."
+}
+

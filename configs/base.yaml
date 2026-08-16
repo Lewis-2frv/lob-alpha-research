@@ -1,0 +1,64 @@
+project:
+  name: execution-aware-short-horizon-alpha
+  seed: 20260815
+
+data:
+  provider: databento
+  dataset: GLBX.MDP3
+  schema: mbp-10
+  symbols: [ESM6]
+  stype_in: raw_symbol
+  start: "2026-03-16T00:00:00Z"
+  end: "2026-06-06T00:00:00Z"
+  raw_dir: data/raw/databento
+  interim_dir: data/interim
+  processed_dir: data/processed
+
+contract:
+  expected_tick_size: 0.25
+  expected_multiplier: 50.0
+  require_definition_match: true
+
+session:
+  timezone: America/New_York
+  start_time: "09:35:00"
+  end_time: "15:55:00"
+  decision_grid_ms: 100
+  maximum_quote_age_ms: 500
+
+features:
+  ofi_lookbacks_ms: [100, 500]
+  trade_lookbacks_ms: [500, 1000]
+  event_intensity_lookback_ms: 500
+  lagged_return_ms: 1000
+  depth_levels: [1, 5, 10]
+  depth_weight_decay: 0.5
+
+labels:
+  horizons_ms: [100, 250, 500, 1000]
+
+splits:
+  train_start: "2026-03-16"
+  train_end: "2026-04-24"
+  validation_start: "2026-04-27"
+  validation_end: "2026-05-08"
+  holdout_start: "2026-05-11"
+  holdout_end: "2026-06-05"
+
+execution:
+  primary_latency_ms: 10
+  latency_grid_ms: [0, 1, 5, 10, 25, 50, 100]
+  primary_fee_per_contract_per_side_usd: 2.50
+  fee_grid_per_contract_per_side_usd: [0.0, 0.25, 0.50, 1.0, 2.5]
+  primary_quantity: 1
+  quantity_grid: [1, 2, 5, 10]
+  maximum_open_positions: 1
+
+research:
+  ridge_alphas: [0.1, 1.0, 10.0, 100.0]
+  safety_margin_grid_ticks: [0.0, 0.25, 0.5, 1.0]
+  primary_safety_margin_ticks: 0.25
+  cv_folds: 5
+  minimum_train_sessions: 10
+  max_fit_rows_per_session: 40000
+  bootstrap_repetitions: 2000

@@ -1,0 +1,29 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Licensed or generated market data
+data/raw/
+data/interim/
+data/processed/
+artifacts/
+
+# Credentials and local settings
+.env
+*.key
+
+# Keep empty output directories
+!data/manifests/
+!data/manifests/.gitkeep
+!reports/figures/
+!reports/figures/.gitkeep
+!reports/tables/
+!reports/tables/.gitkeep
+
