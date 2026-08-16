@@ -30,15 +30,18 @@ if (Test-Path $RunRoot) {
 
 & $ProjectPython -m lob_alpha.cli config-check --config configs/base.yaml
 Assert-NativeSuccess "Configuration check"
-& $ProjectPython -m lob_alpha.cli estimate-cost --config configs/base.yaml
-Assert-NativeSuccess "Cost estimation"
+& $ProjectPython -m lob_alpha.cli estimate-session-costs `
+    --config configs/base.yaml `
+    --output artifacts/full_session_cost_plan.json
+Assert-NativeSuccess "Exact intraday session cost estimation"
 
 $DefinitionPath = "data/raw/databento/ESM6_20260316_definition.dbn.zst"
 if (-not (Test-Path $DefinitionPath)) {
     & $ProjectPython -m lob_alpha.cli download-definitions `
         --config configs/base.yaml `
         --output $DefinitionPath `
-        --max-cost-usd $MaxDefinitionCostUsd
+        --max-cost-usd $MaxDefinitionCostUsd `
+        --confirm-paid-request
     Assert-NativeSuccess "Definition download"
 }
 & $ProjectPython -m lob_alpha.cli verify-definition `
@@ -46,20 +49,13 @@ if (-not (Test-Path $DefinitionPath)) {
     --input $DefinitionPath
 Assert-NativeSuccess "Contract-definition verification"
 
-$MarketDataFiles = @(
-    Get-ChildItem "data/raw/databento" -Recurse -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -like "*.dbn.zst" -and $_.Name -notlike "*definition*" }
-)
-if ($MarketDataFiles.Count -eq 0) {
-    & $ProjectPython -m lob_alpha.cli batch-run `
-        --config configs/base.yaml `
-        --max-cost-usd $MaxDataCostUsd `
-        --confirm-paid-request `
-        --output-dir data/raw/databento
-    Assert-NativeSuccess "Paid batch acquisition"
-} else {
-    Write-Host "Existing market-data files found; skipping paid batch submission."
-}
+& $ProjectPython -m lob_alpha.cli download-sessions `
+    --config configs/base.yaml `
+    --max-cost-usd $MaxDataCostUsd `
+    --confirm-paid-request `
+    --output-dir data/raw/databento `
+    --manifest data/manifests/full_session_acquisition.json
+Assert-NativeSuccess "Paid exact-session acquisition"
 
 & $ProjectPython -m lob_alpha.cli process-all `
     --config configs/base.yaml `

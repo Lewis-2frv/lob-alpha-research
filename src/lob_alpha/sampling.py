@@ -25,7 +25,7 @@ def filter_session(
 ) -> pd.DataFrame:
     start, end = session_bounds(session_date, config)
     timestamps = pd.to_datetime(events["ts_recv"], utc=True)
-    return events.loc[(timestamps >= start) & (timestamps <= end)].copy()
+    return events.loc[(timestamps >= start) & (timestamps < end)].copy()
 
 
 def sample_decision_states(

@@ -9,9 +9,15 @@ from dataclasses import asdict
 from datetime import date, timedelta
 from pathlib import Path
 
+from .acquisition import (
+    download_planned_sessions,
+    estimate_session_costs,
+    write_session_cost_plan,
+)
 from .config import load_config
 from .dataset import process_raw_directory
 from .definitions import verify_contract_definition
+from .feasibility import audit_session_resources
 from .fixture import make_mbp10_fixture
 from .ingest import (
     batch_job_status,
@@ -64,12 +70,62 @@ def _estimate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _estimate_sessions(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    plan = estimate_session_costs(config)
+    payload = plan.to_dict(config)
+    if args.output:
+        output = write_session_cost_plan(args.output, plan, config=config)
+        payload["planning_artifact"] = str(output.resolve())
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _download_sessions(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    result = download_planned_sessions(
+        config,
+        args.output_dir,
+        max_cost_usd=args.max_cost_usd,
+        confirm_paid_request=args.confirm_paid_request,
+        manifest_path=args.manifest,
+    )
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def _audit_resources(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    payload = audit_session_resources(
+        config,
+        raw_dir=args.raw_dir or config.data.raw_dir,
+        processed_dir=args.processed_dir,
+        output_json=args.output_json,
+        output_markdown=args.output_markdown,
+        output_format=args.output_format,
+        overwrite=args.overwrite,
+    )
+    print(
+        json.dumps(
+            {
+                "output_json": str(Path(args.output_json).resolve()),
+                "output_markdown": str(Path(args.output_markdown).resolve()),
+                "counts": payload["counts"],
+                "maxima": payload["maxima"],
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
 def _download(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     output, cost = download_stream(
         config,
         args.output,
         max_cost_usd=args.max_cost_usd,
+        confirm_paid_request=args.confirm_paid_request,
         overwrite=args.overwrite,
     )
     print(json.dumps({"output": str(output), "estimated_cost_usd": cost}, indent=2))
@@ -189,6 +245,7 @@ def _download_definitions(args: argparse.Namespace) -> int:
         config,
         args.output,
         max_cost_usd=args.max_cost_usd,
+        confirm_paid_request=args.confirm_paid_request,
         schema="definition",
         start=start,
         end=end,
@@ -455,10 +512,56 @@ def build_parser() -> argparse.ArgumentParser:
     estimate.add_argument("--config", default="configs/sample_three_sessions.yaml")
     estimate.set_defaults(handler=_estimate)
 
+    estimate_sessions = subparsers.add_parser(
+        "estimate-session-costs",
+        help="estimate each exact intraday session independently without downloading",
+    )
+    estimate_sessions.add_argument("--config", default="configs/sample_three_sessions.yaml")
+    estimate_sessions.add_argument("--output")
+    estimate_sessions.set_defaults(handler=_estimate_sessions)
+
+    session_download = subparsers.add_parser(
+        "download-sessions",
+        help="download exact intraday sessions after aggregate cost and confirmation gates",
+    )
+    session_download.add_argument("--config", default="configs/sample_three_sessions.yaml")
+    session_download.add_argument("--output-dir", default="data/raw/databento")
+    session_download.add_argument("--manifest")
+    session_download.add_argument("--max-cost-usd", required=True, type=float)
+    session_download.add_argument("--confirm-paid-request", action="store_true")
+    session_download.set_defaults(handler=_download_sessions)
+
+    resource_audit = subparsers.add_parser(
+        "audit-session-resources",
+        help="audit downloaded sample sessions serially without research-performance claims",
+    )
+    resource_audit.add_argument("--config", default="configs/sample_three_sessions.yaml")
+    resource_audit.add_argument("--raw-dir")
+    resource_audit.add_argument(
+        "--processed-dir",
+        default="artifacts/feasibility/processed",
+    )
+    resource_audit.add_argument(
+        "--output-json",
+        default="artifacts/feasibility/resource_audit.json",
+    )
+    resource_audit.add_argument(
+        "--output-markdown",
+        default="artifacts/feasibility/resource_audit.md",
+    )
+    resource_audit.add_argument(
+        "--output-format",
+        choices=("parquet", "csv.gz"),
+        default="parquet",
+    )
+    resource_audit.add_argument("--overwrite", action="store_true")
+    resource_audit.set_defaults(handler=_audit_resources)
+
     download = subparsers.add_parser("download", help="perform an explicitly cost-capped download")
     download.add_argument("--config", default="configs/sample_three_sessions.yaml")
     download.add_argument("--output", required=True)
     download.add_argument("--max-cost-usd", required=True, type=float)
+    download.add_argument("--confirm-paid-request", action="store_true")
     download.add_argument("--overwrite", action="store_true")
     download.set_defaults(handler=_download)
 
@@ -501,6 +604,7 @@ def build_parser() -> argparse.ArgumentParser:
     definitions.add_argument("--config", default="configs/sample_three_sessions.yaml")
     definitions.add_argument("--output", required=True)
     definitions.add_argument("--max-cost-usd", required=True, type=float)
+    definitions.add_argument("--confirm-paid-request", action="store_true")
     definitions.add_argument("--overwrite", action="store_true")
     definitions.set_defaults(handler=_download_definitions)
 

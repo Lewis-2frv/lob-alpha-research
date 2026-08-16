@@ -12,7 +12,7 @@ From PowerShell in the repository root:
 
 This creates `.venv`, installs dependencies, runs the unit suite and rehearses all nine pipeline stages on clearly labelled synthetic data.
 
-## 2. Approve data cost and run through candidate freeze
+## 2. Run the three-session feasibility gate
 
 Set the API key only in the current shell:
 
@@ -20,13 +20,64 @@ Set the API key only in the current shell:
 $env:DATABENTO_API_KEY = "db-..."
 ```
 
-Review the estimate first:
+Run the exact-session metadata estimate first. This command cannot request time-series data:
 
 ```powershell
-.\.venv\Scripts\python.exe -m lob_alpha.cli estimate-cost --config configs/base.yaml
+.\.venv\Scripts\python.exe -m lob_alpha.cli estimate-session-costs `
+  --config configs/sample_three_sessions.yaml `
+  --output artifacts/feasibility/session_cost_plan.json
 ```
 
-Then provide a ceiling no higher than you genuinely accept:
+The PowerShell workflow is estimate-only by default. It also creates a local audit that
+records missing sessions honestly if no sample files have been acquired:
+
+```powershell
+.\scripts\run_three_session_feasibility.ps1
+```
+
+After reviewing the three independent estimates, rerun with a ceiling no higher than you
+genuinely accept and a separate paid-request confirmation:
+
+```powershell
+.\scripts\run_three_session_feasibility.ps1 `
+  -MaxDataCostUsd 5.00 `
+  -ConfirmPaidRequest
+```
+
+`5.00` is only an example cap, not an expected price. The downloader estimates all missing
+sessions before its first paid call and aborts if their aggregate is above the cap.
+It writes one exact intraday compressed DBN file per date. It never overwrites raw data;
+resume skips only files whose complete manifest record still matches local path, size and
+SHA-256. A complete interrupted `.partial` file is scanned and promoted locally without
+another provider request. A truncated partial or paid attempt with no recoverable file fails
+closed and is preserved: do not delete it or retry until Databento billing/account history
+has been reviewed.
+
+Review:
+
+- `artifacts/feasibility/session_cost_plan.json` for exact UTC request bounds and estimates;
+- `data/manifests/sample_three_session_acquisition.json` for acquisition provenance;
+- `artifacts/feasibility/resource_audit.json` for machine-readable totals and maxima;
+- `artifacts/feasibility/resource_audit.md` for the concise laptop-safety summary.
+
+The audit is engineering evidence only. It contains no alpha, IC, P&L, hit-rate, model
+selection, cross-validation or holdout result. Empty or rejected data is not counted as a
+usable research session. Databento 0.83.0 exposes chunked `to_df(count=...)` iteration, but
+the current causal feature/label pipeline still requires one complete session DataFrame.
+This phase claims one-session-at-a-time processing, not end-to-end chunked processing.
+
+## 3. Approve the full exact-session run through candidate freeze
+
+Only if the feasibility maxima are acceptable, first price the full registered set without
+downloading:
+
+```powershell
+.\.venv\Scripts\python.exe -m lob_alpha.cli estimate-session-costs `
+  --config configs/base.yaml `
+  --output artifacts/full_session_cost_plan.json
+```
+
+Then provide a separately reviewed full-study ceiling:
 
 ```powershell
 .\scripts\run_real_through_freeze.ps1 `
@@ -34,7 +85,10 @@ Then provide a ceiling no higher than you genuinely accept:
   -ConfirmPaidRequest
 ```
 
-`25.00` is only an example ceiling, not an expected price. The code re-estimates immediately before submitting and aborts if the estimate exceeds your cap. It then waits for the daily batch, verifies provider hashes, processes every session, runs train/validation research and freezes one candidate.
+`25.00` is only an example cap. This workflow now acquires exact 09:35–15:55 New York
+sessions rather than complete UTC days, processes every session, runs train/validation
+research and freezes one candidate. The registered hypothesis, features, splits, execution
+assumptions and holdout are unchanged.
 
 Inspect:
 
@@ -43,7 +97,7 @@ Inspect:
 - `artifacts/real-run/validation/` for baseline comparisons, threshold results and the selected candidate;
 - `artifacts/real-run/frozen_candidate.json` before touching holdout.
 
-## 3. Explicitly release the holdout
+## 4. Explicitly release the holdout
 
 Only after the frozen choice looks methodologically valid:
 

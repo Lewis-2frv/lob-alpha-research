@@ -81,23 +81,76 @@ Keep the API key in the environment and never commit it:
 export DATABENTO_API_KEY="db-..."       # PowerShell: $env:DATABENTO_API_KEY="db-..."
 ```
 
-First estimate the full registered request without downloading:
+Start with the three-session feasibility phase. This first command is metadata-only: it
+prices the exact 09:35–15:55 America/New_York requests independently and cannot download
+time-series data:
 
-```bash
-lob-alpha estimate-cost --config configs/base.yaml
+```powershell
+.\.venv\Scripts\python.exe -m lob_alpha.cli estimate-session-costs `
+  --config configs/sample_three_sessions.yaml `
+  --output artifacts/feasibility/session_cost_plan.json
 ```
 
-After reviewing the estimate, one command can submit a daily-split DBN batch, poll it, download it and verify provider-published SHA-256 hashes. It will abort if the fresh estimate exceeds your explicit ceiling:
+The safe PowerShell entry point runs that free estimate and audits any files already present.
+With no confirmation switch it never downloads:
 
-```bash
-lob-alpha batch-run \
-  --config configs/base.yaml \
-  --max-cost-usd 25.00 \
-  --confirm-paid-request \
-  --output-dir data/raw/databento
+```powershell
+.\scripts\run_three_session_feasibility.ps1
 ```
 
-`25.00` is an example ceiling, not an expected price. The smaller `configs/sample_three_sessions.yaml` stream workflow remains available for a low-cost audit.
+Only after reviewing the plan, provide both a finite aggregate ceiling and the independent
+paid-request confirmation:
+
+```powershell
+.\scripts\run_three_session_feasibility.ps1 `
+  -MaxDataCostUsd 5.00 `
+  -ConfirmPaidRequest
+```
+
+`5.00` is an example cap, not an expected price. Before the first paid call the downloader
+estimates every missing session and rejects their aggregate above the cap. It writes one
+`ESM6_YYYY-MM-DD_mbp-10.dbn.zst` file per exact intraday session via a `.partial` path and
+atomic rename, plus a manifest of request parameters, estimates, byte sizes, paths and local
+SHA-256 hashes. Existing raw files are never overwritten or trusted without a matching
+complete manifest record.
+
+On resume, completed files are reopened and hash-checked before being excluded from the new
+cost calculation. A complete interrupted `.partial` file is scanned and promoted locally
+without another provider request. If that scan fails, or a paid attempt has no recoverable
+file, the run stops and preserves the evidence; do not delete it or retry until Databento
+billing/account history has been reviewed.
+
+The local-only audit can also be run directly:
+
+```powershell
+.\.venv\Scripts\python.exe -m lob_alpha.cli audit-session-resources `
+  --config configs/sample_three_sessions.yaml `
+  --raw-dir data/raw/databento `
+  --processed-dir artifacts/feasibility/processed `
+  --output-json artifacts/feasibility/resource_audit.json `
+  --output-markdown artifacts/feasibility/resource_audit.md
+```
+
+It reports storage, decoded rows, approximate pandas memory, processing time, decision rows
+and data-quality counts. It is an engineering artifact only: it does not calculate alpha,
+IC, P&L, hit rate, model selection, cross-validation or holdout claims.
+
+After the sample audit supports a laptop-safe full run, estimate every registered intraday
+session (still metadata-only), then use the exact-session full workflow:
+
+```powershell
+.\.venv\Scripts\python.exe -m lob_alpha.cli estimate-session-costs `
+  --config configs/base.yaml `
+  --output artifacts/full_session_cost_plan.json
+
+.\scripts\run_real_through_freeze.ps1 `
+  -MaxDataCostUsd 25.00 `
+  -ConfirmPaidRequest
+```
+
+`25.00` is also only an example ceiling. The registered contract and research design are
+unchanged; only the provider request windows are narrowed from full UTC days to the exact
+configured sessions.
 
 Definitions are acquired separately from one exact UTC-day snapshot:
 
@@ -105,7 +158,8 @@ Definitions are acquired separately from one exact UTC-day snapshot:
 lob-alpha download-definitions \
   --config configs/sample_three_sessions.yaml \
   --output data/raw/databento/ESM6_20260316_definition.dbn.zst \
-  --max-cost-usd 1.00
+  --max-cost-usd 1.00 \
+  --confirm-paid-request
 
 lob-alpha verify-definition \
   --config configs/base.yaml \
@@ -138,8 +192,9 @@ Every processed output receives a manifest containing input/config hashes and th
 - Complete sessions, not rows, define data splits.
 - Train-only expanding windows choose ridge regularization; holdout labels are inaccessible to selection.
 - Train-fitted decile edges are applied unchanged to validation.
-- Costs are estimated before any provider download and actual downloads require a user-supplied USD cap.
-- Paid batch submission also requires a separate confirmation flag.
+- Every exact intraday session is estimated before the first provider download.
+- Paid session acquisition requires both a finite aggregate USD cap and a separate confirmation flag.
+- Completed raw files are resumable only after manifest path, size and SHA-256 verification.
 - Marketable fills consume displayed depth and reject unavailable quantity.
 - P&L uses executable entry and exit VWAPs; midpoint is used only as a prediction label/markout.
 - Spread is embedded in fills and cannot be subtracted twice.
@@ -152,7 +207,7 @@ Every processed output receives a manifest containing input/config hashes and th
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
-The suite covers configuration/split invariants, malformed books, tick alignment, formula checks, future-event perturbation, label timing, truncated data, dual paid-request gates, batch hashes, daily-file uniqueness, chronological folds, freeze immutability, claim-gated reporting, multi-level fills, insufficient depth and end-to-end feature/model construction.
+The suite covers configuration/split invariants, malformed books, tick alignment, formula checks, future-event perturbation, label timing, truncated data, DST-safe exact-session planning, weekends, dual paid-request gates, interruption/resume protection, manifest hashes, resource-audit aggregation, batch hashes, daily-file uniqueness, chronological folds, freeze immutability, claim-gated reporting, multi-level fills, insufficient depth and end-to-end feature/model construction.
 
 ## Repository map
 
@@ -174,4 +229,4 @@ scripts/                 PowerShell setup, real-run and holdout entry points
 
 ## Honest limitations
 
-The planned study covers one contract, one venue and a limited period. `ts_recv` is a provider capture timestamp, not this strategy's measured live feed latency. Displayed-depth execution does not model the strategy's own market impact. Participant fees vary. Passive queue behavior is outside v0.1. These limitations will remain visible even if the holdout result is positive.
+The planned study covers one contract, one venue and a limited period. `ts_recv` is a provider capture timestamp, not this strategy's measured live feed latency. Displayed-depth execution does not model the strategy's own market impact. Participant fees vary. Passive queue behavior is outside v0.1. Databento 0.83.0 exposes chunked `DBNStore.to_df(count=...)` iteration, but the current causal feature/label pipeline requires one complete session frame. This phase therefore claims one-session-at-a-time processing, not end-to-end chunked processing, and uses the per-session maximum as the laptop memory indicator. These limitations will remain visible even if the holdout result is positive.

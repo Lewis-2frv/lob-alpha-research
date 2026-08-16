@@ -22,7 +22,7 @@ class CostLimitError(RuntimeError):
 
 
 class PaidRequestConfirmationError(RuntimeError):
-    """Raised when a paid batch submission lacks an explicit confirmation flag."""
+    """Raised when a paid request lacks an explicit confirmation flag."""
 
 
 def _databento_module() -> Any:
@@ -83,6 +83,7 @@ def download_stream(
     output_path: str | Path,
     *,
     max_cost_usd: float,
+    confirm_paid_request: bool,
     schema: str | None = None,
     start: str | None = None,
     end: str | None = None,
@@ -91,14 +92,24 @@ def download_stream(
 ) -> tuple[Path, float]:
     """Download one explicitly cost-capped request as compressed DBN.
 
-    The caller must provide a finite cost ceiling. This prevents accidental large
-    paid requests when dates or symbology are wrong.
+    The caller must provide both a finite cost ceiling and an independent boolean
+    confirmation. This prevents accidental paid requests when dates or symbology
+    are wrong.
     """
 
     _validate_cost_ceiling(max_cost_usd)
+    if not confirm_paid_request:
+        raise PaidRequestConfirmationError(
+            "stream download requires confirm_paid_request=True in addition to the cost cap"
+        )
     path = Path(output_path)
     if path.exists() and not overwrite:
         raise FileExistsError(f"refusing to overwrite existing data: {path}")
+    partial_path = path.with_name(f"{path.name}.partial")
+    if partial_path.exists():
+        raise FileExistsError(
+            f"refusing to recharge while an interrupted download exists: {partial_path}"
+        )
 
     active_client = client or historical_client()
     cost = estimate_cost(
@@ -116,10 +127,27 @@ def download_stream(
     path.parent.mkdir(parents=True, exist_ok=True)
     store = active_client.timeseries.get_range(
         **request_parameters(config, schema=schema, start=start, end=end),
-        path=str(path),
+        path=str(partial_path),
     )
-    if not path.exists():
-        store.to_file(path, mode="w" if overwrite else "x")
+    _close_dbn_store(store)
+    if not partial_path.is_file() or partial_path.stat().st_size == 0:
+        raise OSError(f"Databento did not create a nonempty download: {partial_path}")
+
+    # Import lazily to avoid an ingest/acquisition module cycle. A complete DBN
+    # and Zstandard scan must succeed before the temporary name is promoted.
+    from .acquisition import validate_local_dbn
+
+    validate_local_dbn(
+        partial_path,
+        expected_schema=schema or config.data.schema,
+        scan_records=True,
+    )
+    if overwrite:
+        partial_path.replace(path)
+    else:
+        if path.exists():
+            raise FileExistsError(f"refusing to overwrite existing data: {path}")
+        partial_path.rename(path)
     return path, cost
 
 
@@ -212,12 +240,23 @@ def definition_window(config: ResearchConfig) -> tuple[str, str]:
     return start.isoformat(), end.isoformat()
 
 
+def _close_dbn_store(store: Any) -> None:
+    """Close Databento 0.83's file-backed store, which has no public close method."""
+
+    data_source = getattr(store, "_data_source", None)
+    if data_source is not None:
+        data_source.reader.close()
+
+
 def load_dbn(path: str | Path) -> pd.DataFrame:
     """Load a local DBN/DBN.ZST file as a pandas DataFrame."""
 
     db = _databento_module()
     store = db.DBNStore.from_file(path)
-    frame = store.to_df(price_type="float", pretty_ts=True, map_symbols=True, tz="UTC")
+    try:
+        frame = store.to_df(price_type="float", pretty_ts=True, map_symbols=True, tz="UTC")
+    finally:
+        _close_dbn_store(store)
     if frame.index.name == "ts_recv":
         frame = frame.reset_index()
     return frame
