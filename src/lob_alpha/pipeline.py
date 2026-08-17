@@ -79,10 +79,23 @@ def write_table(frame: pd.DataFrame, path: str | Path) -> Path:
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     lowered = output.name.lower()
-    if lowered.endswith(".parquet"):
-        frame.to_parquet(output, index=False)
-    elif lowered.endswith((".csv", ".csv.gz")):
-        frame.to_csv(output, index=False)
-    else:
-        raise ValueError("output must end in .parquet, .csv, or .csv.gz")
+    temporary = output.with_name(output.name + ".partial")
+    try:
+        if lowered.endswith(".parquet"):
+            frame.to_parquet(temporary, index=False)
+        elif lowered.endswith(".csv.gz"):
+            frame.to_csv(
+                temporary,
+                index=False,
+                compression={"method": "gzip", "mtime": 0},
+            )
+        elif lowered.endswith(".csv"):
+            frame.to_csv(temporary, index=False)
+        else:
+            raise ValueError("output must end in .parquet, .csv, or .csv.gz")
+        temporary.replace(output)
+    except Exception:
+        if temporary.exists():
+            temporary.unlink()
+        raise
     return output

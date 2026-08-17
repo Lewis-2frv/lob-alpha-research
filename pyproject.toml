@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lob-alpha-research"
-version = "0.2.0"
-description = "Execution-aware short-horizon alpha research from limit-order-book dynamics"
+version = "0.3.0"
+description = "Causal, execution-aware equity closing-auction alpha research"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
@@ -23,6 +23,10 @@ data = [
   "databento>=0.63",
   "pyarrow>=17",
   "zstandard>=0.23",
+]
+equity = [
+  "pyarrow>=17",
+  "lightgbm>=4.6",
 ]
 dev = [
   "pytest>=8.3",

@@ -14,6 +14,8 @@ data/raw/
 data/interim/
 data/processed/
 artifacts/
+*.joblib
+/optiver-trading-at-the-close*.zip
 
 # Credentials and local settings
 .env
@@ -26,4 +28,3 @@ artifacts/
 !reports/figures/.gitkeep
 !reports/tables/
 !reports/tables/.gitkeep
-

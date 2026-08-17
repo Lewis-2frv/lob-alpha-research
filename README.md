@@ -1,232 +1,227 @@
-# Short-Horizon Order-Flow Alpha in E-mini S&P 500 Futures
+# Equity Closing-Auction Alpha Research
 
 [![tests](https://img.shields.io/badge/tests-passing-brightgreen)](#verification)
 [![status](https://img.shields.io/badge/status-pre--data%20release-blue)](#current-status)
 
-An execution-aware research pipeline testing whether limit-order-book state and recent order flow predict 100–1,000 ms price changes strongly enough to survive observable depth, spread, fees and latency.
+This repository tests whether contemporaneous order-book liquidity, imbalance and closing-auction
+state predict Optiver's supplied 60-second synthetic-index-relative target. It separately tests
+whether those predictions can rank executable stock quote returns strongly enough to support a
+spread- and fee-aware cross-sectional long/short simulation.
 
-This is a quantitative trading research project, not a model-accuracy demo and not a claim of a profitable live HFT strategy.
+The primary public project uses the free Kaggle **Optiver - Trading at the Close** dataset. This is
+trading research rather than a generic competition-accuracy exercise: predictive MAE and IC are
+compared with executable quote-crossing returns, displayed-liquidity capacity, spread cost and
+fee sensitivity. No strategy is described as profitable without an untouched real-data holdout.
 
 ## Current status
 
-The v0.2 pre-data release is a staged, almost push-button study. It includes cost-gated daily acquisition, provider-hash verification, point-in-time contract checks, per-session validation and compact storage, train-only diagnostics, chronological model selection, validation-only execution selection, a hash-locked holdout, sensitivity grids and generated reports. The complete workflow has been rehearsed on synthetic books. No real-data performance result is claimed yet.
+Version 0.3 is a pre-data engineering release. The complete workflow has been rehearsed on
+unmistakably synthetic data, but synthetic numbers are claim-gated and are not market evidence.
+Lewis must manually accept Kaggle's competition rules and data licence before using the real data.
 
-See [implementation status](reports/implementation_status.md) and the [frozen methodology](reports/methodology.md).
+The earlier CME E-mini/Databento pipeline remains available as an optional provider and historical
+engineering path. It is documented separately below and does not run in the default equity flow.
 
-## Research chain
+## Registered equity study
+
+- Licensed input: `data/raw/optiver/train.csv`, never committed or redistributed.
+- Ten-second closing-auction observations and the supplied 60-second, index-relative competition
+  target in basis points; the project does not reconstruct or relabel it as a raw stock return.
+- Complete chronological date blocks: train `date_id` 0-329, validation 330-404, holdout 405-480.
+- Target-blind metadata registration before preparation; the observed date range must match exactly.
+- Order-book, auction-state, within-stock/date causal dynamics and current-`time_id`
+  cross-sectional features.
+- `stock_id` represented as a categorical fixed effect, never an ordinal economic quantity.
+- Mandatory zero and signed-imbalance baselines, ridge, scikit-learn histogram gradient boosting,
+  and optional LightGBM. Linear/LightGBM stock effects are sparse one-hot columns; histogram
+  gradient boosting uses one native categorical column rather than a dense stock matrix.
+- Expanding-window train-only CV with deterministic per-date tuning samples and MAE as the primary
+  selection metric.
+- Validation-only model and trading-rule selection followed by a content-addressed development
+  refit and candidate freeze.
+- Explicitly acknowledged, non-overwriting one-shot holdout with hash checks for raw data and
+  metadata, prepared partitions, configuration, feature specification, fitted preprocessing and
+  model.
+
+The full design is in [`configs/equity_close.yaml`](configs/equity_close.yaml).
+
+## Causal and execution contract
+
+Features at a row may use only that row and earlier observations from the same `(stock_id,
+date_id)`. Cross-sectional ranks and robust z-scores use only stocks sharing the current `time_id`.
+`target`, future WAP, future quotes and holdout aggregates are excluded from every model feature.
+Missing `near_price` and `far_price` values are preserved, imputed from development data only, and
+paired with explicit missingness indicators. Rare missing supplied targets are also preserved so
+their rows can contribute causal history and executable quotes, but they are excluded from every
+supervised fit and predictive metric and are reported as coverage gaps.
+
+At non-overlapping decision times, the simulator requires both positive long candidates and
+negative short candidates within the same `time_id`, allocates equal gross exposure to both sides,
+enters longs at the ask and shorts at the bid, and reverses at exactly aligned quotes 60 seconds
+later. Invalid, missing or crossed quotes are rejected. Spread is embedded through executable
+prices exactly once; separately reported fees are applied per side. These quote returns are not the
+supplied predictive target. Returns are basis points on anonymised normalized prices, not invented
+dollar P&L.
+
+This is an auction-period quote-crossing simulation. It does not claim millisecond latency, queue
+position, passive fills, consolidated NBBO or live deployability.
+
+## Setup and synthetic verification
+
+On Windows:
+
+```powershell
+.\scripts\setup_equity_and_verify.ps1
+```
+
+This installs the equity research extras, runs Ruff and all unit tests, then exercises audit,
+preparation, train CV, validation selection, freeze, mechanical holdout and claim-gated reporting
+on generated data.
+
+To run only the synthetic study with an existing environment:
+
+```powershell
+.\.venv\Scripts\python.exe -m lob_alpha.cli equity-run-synthetic `
+  --config configs/equity_close_fixture.yaml `
+  --output-dir artifacts/equity-fixture-local
+```
+
+## Licensed data handoff
+
+Follow [`reports/equity_data_handoff.md`](reports/equity_data_handoff.md). Manual browser download
+is the default; Kaggle API credentials are neither needed nor requested.
+
+After manually downloading the competition ZIP:
+
+```powershell
+.\scripts\import_optiver_zip.ps1 `
+  -ZipPath "C:\path\to\optiver-trading-at-the-close.zip"
+```
+
+The extractor permits exactly one safe `train.csv`, rejects zip-slip paths, links, Windows-special
+names and case-colliding destinations, enforces member/size/compression-ratio limits, extracts only
+the expected file through a partial path, and refuses overwrite.
+
+## Real-data stages
+
+Audit identifiers without reading target values, then perform the full schema/finiteness audit and
+memory-bounded per-date preparation:
+
+```powershell
+.\scripts\audit_prepare_equity.ps1
+```
+
+The exact target-blind registration command is:
+
+```powershell
+.\.venv\Scripts\python.exe -m lob_alpha.cli equity-audit `
+  --config configs/equity_close.yaml `
+  --input data/raw/optiver/train.csv `
+  --output data/interim/optiver_metadata_registration.json `
+  --metadata-only
+```
+
+Train through validation and freeze without reading holdout rows:
+
+```powershell
+.\scripts\run_equity_through_freeze.ps1
+```
+
+That script produces a pre-holdout report and stops. Only after independent review of the code,
+audit, selection artifacts, assumptions and frozen hashes should the one-shot holdout be considered:
+
+```powershell
+.\scripts\run_equity_holdout_report.ps1 `
+  -HoldoutAcknowledgement "RELEASE OPTIVER HOLDOUT ONCE"
+```
+
+The holdout command writes the stable `data/processed/optiver/HOLDOUT_STARTED.json` seal before it
+opens the holdout manifest or any holdout partition. The exact phrase is case-sensitive. A crash
+therefore leaves the prepared study sealed, and changing the output directory, report path, model
+name or CLI invocation cannot release it again. A successful run also anchors the completion JSON
+beside that seal. If a sealed run crashes, preserve the seal and partial output for review; do not
+delete them or retry. Recovery means documenting the failed release and, only after an independent
+decision, registering and preparing a genuinely new study—not redirecting the same holdout.
+
+## Equity CLI
 
 ```text
-CME Globex MBP-10 events
-        -> validated observable book states
-        -> microstructure features
-        -> chronological forecasts
-        -> confidence-gated decisions
-        -> delayed book-sweep execution
-        -> gross-to-net P&L and failure analysis
+equity-audit           schema/data audit; --metadata-only excludes target reads
+equity-prepare         per-date causal Parquet preparation
+equity-train           train-only diagnostics and expanding-window CV
+equity-validate        validation model and trading-rule selection
+equity-freeze          content-addressed candidate freeze
+equity-holdout         explicitly acknowledged one-shot holdout
+equity-report          Markdown report, figures and claim-gated CV evidence
+equity-extract-zip     safe manual ZIP extraction
+equity-run-synthetic   complete deterministic engineering rehearsal
 ```
 
-## Registered first release
+## Evidence and reporting
 
-- One exact E-mini S&P 500 front-month contract; initial candidate `ESM6`.
-- US cash-market session, 09:35–15:55 America/New_York.
-- Decisions every 100 ms using `ts_recv`.
-- Forecast horizons: 100, 250, 500 and 1,000 ms.
-- Queue/depth imbalance, microprice, OFI, signed trade flow and liquidity controls.
-- Raw-signal baselines and regularized linear regression.
-- Complete-session train, validation and untouched holdout partitions.
-- Marketable entry/exit through displayed top-10 depth.
-- Fee, size and 0–100 ms latency sensitivity.
+Validation and holdout scoring read one date partition at a time and retain only narrow scored
+tables; tuning and refit inputs have deterministic per-date row ceilings. The generated report
+covers the research question, registered split, causal features, baselines,
+model comparison, validation, feature ablation, daily IC, prediction deciles, stability regimes,
+trading-cost frontier, capacity and falsification limitations.
 
-Full MBO reconstruction, passive queue fills, nonlinear models, extra instruments and C++ are deferred until the empirical v0.1 release.
+Before a real holdout, `cv_evidence.md` contains only an engineering/methodology bullet. Synthetic
+and validation-only values never enter it. After a real holdout it may include exact measured
+numbers. A negative net result generates an evidence-focused falsification bullet rather than being
+hidden or relabelled as profitable.
 
-## Fastest path on Windows
+## Optional CME/Databento path
 
-Run the complete installation, unit suite and synthetic nine-session rehearsal:
+The v0.2 E-mini S&P 500 MBP-10 implementation remains under `configs/base.yaml` and the existing
+futures CLI commands. It retains DST-safe exact-session requests, pre-download estimates, a finite
+aggregate USD cap, independent paid-request confirmation, `.partial` recovery, manifests and
+SHA-256 checks.
 
-```powershell
-.\scripts\setup_and_verify.ps1
-```
-
-Then read [the short manual handoff](reports/manual_handoff.md). The only unavoidable manual actions are setting your own API key, approving a maximum data cost, reviewing the frozen candidate and releasing the one-shot holdout.
-
-## Manual installation
-
-```bash
-python -m venv .venv
-source .venv/bin/activate               # Windows: .venv\Scripts\activate
-python -m pip install -e ".[data,dev]"
-```
-
-The small single-session fixture needs only the core dependencies:
-
-```bash
-python -m pip install -e .
-lob-alpha config-check --config configs/base.yaml
-lob-alpha run-fixture --output-dir artifacts/fixture
-```
-
-The full synthetic rehearsal exercises acquisition-independent processing, model selection, freeze controls, execution grids and report generation:
-
-```bash
-lob-alpha run-fixture-study --output-dir artifacts/fixture-study-local
-```
-
-Fixtures validate software mechanics only and are excluded from research evidence.
-
-## Real-data gate
-
-Keep the API key in the environment and never commit it:
-
-```bash
-export DATABENTO_API_KEY="db-..."       # PowerShell: $env:DATABENTO_API_KEY="db-..."
-```
-
-Start with the three-session feasibility phase. This first command is metadata-only: it
-prices the exact 09:35–15:55 America/New_York requests independently and cannot download
-time-series data:
-
-```powershell
-.\.venv\Scripts\python.exe -m lob_alpha.cli estimate-session-costs `
-  --config configs/sample_three_sessions.yaml `
-  --output artifacts/feasibility/session_cost_plan.json
-```
-
-The safe PowerShell entry point runs that free estimate and audits any files already present.
-With no confirmation switch it never downloads:
+The safe estimate-first sample workflow remains:
 
 ```powershell
 .\scripts\run_three_session_feasibility.ps1
 ```
 
-Only after reviewing the plan, provide both a finite aggregate ceiling and the independent
-paid-request confirmation:
+No Databento request is part of the equity workflow. See
+[`reports/manual_handoff.md`](reports/manual_handoff.md) and
+[`reports/methodology.md`](reports/methodology.md) for the optional futures study.
 
-```powershell
-.\scripts\run_three_session_feasibility.ps1 `
-  -MaxDataCostUsd 5.00 `
-  -ConfirmPaidRequest
-```
+## Data and licence safety
 
-`5.00` is an example cap, not an expected price. Before the first paid call the downloader
-estimates every missing session and rejects their aggregate above the cap. It writes one
-`ESM6_YYYY-MM-DD_mbp-10.dbn.zst` file per exact intraday session via a `.partial` path and
-atomic rename, plus a manifest of request parameters, estimates, byte sizes, paths and local
-SHA-256 hashes. Existing raw files are never overwritten or trusted without a matching
-complete manifest record.
-
-On resume, completed files are reopened and hash-checked before being excluded from the new
-cost calculation. A complete interrupted `.partial` file is scanned and promoted locally
-without another provider request. If that scan fails, or a paid attempt has no recoverable
-file, the run stops and preserves the evidence; do not delete it or retry until Databento
-billing/account history has been reviewed.
-
-The local-only audit can also be run directly:
-
-```powershell
-.\.venv\Scripts\python.exe -m lob_alpha.cli audit-session-resources `
-  --config configs/sample_three_sessions.yaml `
-  --raw-dir data/raw/databento `
-  --processed-dir artifacts/feasibility/processed `
-  --output-json artifacts/feasibility/resource_audit.json `
-  --output-markdown artifacts/feasibility/resource_audit.md
-```
-
-It reports storage, decoded rows, approximate pandas memory, processing time, decision rows
-and data-quality counts. It is an engineering artifact only: it does not calculate alpha,
-IC, P&L, hit rate, model selection, cross-validation or holdout claims.
-
-After the sample audit supports a laptop-safe full run, estimate every registered intraday
-session (still metadata-only), then use the exact-session full workflow:
-
-```powershell
-.\.venv\Scripts\python.exe -m lob_alpha.cli estimate-session-costs `
-  --config configs/base.yaml `
-  --output artifacts/full_session_cost_plan.json
-
-.\scripts\run_real_through_freeze.ps1 `
-  -MaxDataCostUsd 25.00 `
-  -ConfirmPaidRequest
-```
-
-`25.00` is also only an example ceiling. The registered contract and research design are
-unchanged; only the provider request windows are narrowed from full UTC days to the exact
-configured sessions.
-
-Definitions are acquired separately from one exact UTC-day snapshot:
-
-```bash
-lob-alpha download-definitions \
-  --config configs/sample_three_sessions.yaml \
-  --output data/raw/databento/ESM6_20260316_definition.dbn.zst \
-  --max-cost-usd 1.00 \
-  --confirm-paid-request
-
-lob-alpha verify-definition \
-  --config configs/base.yaml \
-  --input data/raw/databento/ESM6_20260316_definition.dbn.zst
-```
-
-Then process, select and freeze without touching holdout outcomes:
-
-```bash
-lob-alpha process-all --config configs/base.yaml
-lob-alpha train-stage --config configs/base.yaml
-lob-alpha validation-stage --config configs/base.yaml
-lob-alpha freeze-candidate --config configs/base.yaml
-```
-
-After reviewing the frozen candidate, explicitly release the non-overwriting holdout and build the report:
-
-```bash
-lob-alpha holdout-stage --config configs/base.yaml --acknowledge-one-shot
-lob-alpha build-report
-```
-
-Every processed output receives a manifest containing input/config hashes and the quality report. The daily catalog, stage artifacts and frozen candidate are content-addressed. Licensed raw data and generated artifacts are ignored by Git.
-
-## Causality and execution safeguards
-
-- Features at `t` only use receive timestamps `<= t`.
-- Labels retain exact target and source timestamps.
-- Stale labels and quotes are rejected.
-- Complete sessions, not rows, define data splits.
-- Train-only expanding windows choose ridge regularization; holdout labels are inaccessible to selection.
-- Train-fitted decile edges are applied unchanged to validation.
-- Every exact intraday session is estimated before the first provider download.
-- Paid session acquisition requires both a finite aggregate USD cap and a separate confirmation flag.
-- Completed raw files are resumable only after manifest path, size and SHA-256 verification.
-- Marketable fills consume displayed depth and reject unavailable quantity.
-- P&L uses executable entry and exit VWAPs; midpoint is used only as a prediction label/markout.
-- Spread is embedded in fills and cannot be subtracted twice.
-- The frozen candidate binds configuration, processed catalog and train selection by SHA-256.
-- Holdout execution refuses any nonempty output directory.
+Kaggle/Optiver rows, raw ZIPs, prepared Parquet, fitted models and generated experiment artifacts
+are ignored by Git. Do not redistribute competition data. Only small, licence-safe summaries may
+be considered for version control after Lewis has reviewed the real study.
 
 ## Verification
 
-```bash
-PYTHONPATH=src python -m unittest discover -s tests -v
+```powershell
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+git diff --check
 ```
 
-The suite covers configuration/split invariants, malformed books, tick alignment, formula checks, future-event perturbation, label timing, truncated data, DST-safe exact-session planning, weekends, dual paid-request gates, interruption/resume protection, manifest hashes, resource-audit aggregation, batch hashes, daily-file uniqueness, chronological folds, freeze immutability, claim-gated reporting, multi-level fills, insufficient depth and end-to-end feature/model construction.
+The deterministic suite covers schemas, chronological isolation, causal perturbations,
+cross-sectional boundaries, train-only preprocessing, expanding folds, baselines, exact future
+quote alignment, execution arithmetic, spread attribution, non-overlap, date-cluster bootstraps,
+hash locking, one-shot holdout controls, synthetic claim gating, malicious ZIP paths and both full
+synthetic research workflows.
 
 ## Repository map
 
 ```text
-configs/                 frozen experiment inputs and hypotheses
-data/manifests/          request/run provenance; no licensed data
-src/lob_alpha/           ingestion, validation, research and execution logic
-tests/                   deterministic causality and financial tests
-reports/                 methodology, status and later empirical outputs
-scripts/                 PowerShell setup, real-run and holdout entry points
+configs/                 frozen equity and optional futures registrations
+data/                    ignored licensed inputs and prepared partitions
+src/lob_alpha/           validation, causal research, execution and reporting logic
+tests/                   deterministic leakage, financial and workflow tests
+reports/                 handoffs, methodology and licence-safe report templates
+scripts/                 Windows setup, import, preparation, freeze and holdout stages
 ```
 
-## Data references
+## Limitations
 
-- [Databento MBP-10 schema](https://databento.com/docs/schemas-and-data-formats/mbp-10)
-- [Databento instrument definitions](https://databento.com/docs/schemas-and-data-formats/instrument-definitions)
-- [Databento Historical API](https://databento.com/docs/api-reference-historical/client)
-- [CME E-mini S&P 500 contract page](https://www.cmegroup.com/markets/equities/sp/e-mini-sandp500.contractSpecs.html)
-
-## Honest limitations
-
-The planned study covers one contract, one venue and a limited period. `ts_recv` is a provider capture timestamp, not this strategy's measured live feed latency. Displayed-depth execution does not model the strategy's own market impact. Participant fees vary. Passive queue behavior is outside v0.1. Databento 0.83.0 exposes chunked `DBNStore.to_df(count=...)` iteration, but the current causal feature/label pipeline requires one complete session frame. This phase therefore claims one-session-at-a-time processing, not end-to-end chunked processing, and uses the per-session maximum as the laptop memory indicator. These limitations will remain visible even if the holdout result is positive.
+The Optiver panel is competition data with anonymised normalized prices and a particular auction
+sampling design. Cross-sectional dependence, regime change, normalized displayed size, missing
+auction prices and selection across a small validation grid constrain interpretation. The pipeline
+does not establish live fill quality or post-competition external validity. These limitations remain
+visible regardless of the final result.

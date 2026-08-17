@@ -1,4 +1,20 @@
-# v0.2 pre-data release
+# v0.3 equity closing-auction pre-data release
+
+The primary public workflow now studies Optiver's supplied 60-second synthetic-index-relative
+target, separately from executable stock quote returns, using the licensed Kaggle dataset. It adds
+target-blind metadata registration, bounded per-date
+Parquet preparation, causal within-stock and current-time cross-sectional features, mandatory
+baselines, ridge/nonlinear chronological CV, executable cross-sectional quote simulation,
+content-addressed candidate freezing, a prepared-study-wide one-shot seal, claim-gated reporting,
+bounded safe manual ZIP
+extraction and a complete deterministic synthetic rehearsal.
+
+The v0.2 CME/Databento pipeline remains available as an optional engineering/provider path with its
+paid-request safety controls unchanged.
+
+No Kaggle data or real-data performance claim is included.
+
+## Earlier v0.2 release
 
 This release moves the project from a tested feature/execution foundation to a staged empirical study that is ready for credentials and licensed market data.
 

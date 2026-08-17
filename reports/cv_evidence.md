@@ -1,7 +1,10 @@
 # CV evidence
 
-Safe pre-results draft bullet:
+Safe pre-holdout engineering bullet:
 
-- Engineered a tested, causal MBP-10 futures research pipeline covering 100–1,000 ms forecasts, chronological day-level model selection, delayed displayed-depth execution, explicit fees and frozen-holdout controls.
+- Engineered a tested, causal equity closing-auction pipeline with date-isolated features,
+  expanding-window model selection, executable 60-second quote alignment, spread/fee attribution
+  and content-addressed one-shot holdout controls.
 
-Do not add performance figures until `HOLDOUT_COMPLETE.json` exists.
+Synthetic values and validation-only numbers are intentionally excluded. Do not add performance
+figures until a real Optiver `HOLDOUT_COMPLETE.json` exists and has been reviewed.

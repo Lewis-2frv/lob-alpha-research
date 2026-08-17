@@ -1,0 +1,54 @@
+project:
+  name: optiver-equity-closing-auction
+  seed: 20260316
+  source_kind: real
+
+data:
+  raw_path: data/raw/optiver/train.csv
+  prepared_dir: data/processed/optiver
+  expected_date_id_min: 0
+  expected_date_id_max: 480
+  sample_interval_seconds: 10
+  target_horizon_seconds: 60
+  target_definition: supplied_optiver_index_relative_60s_bps
+  closing_second: 600
+  csv_chunk_rows: 200000
+
+splits:
+  train_start: 0
+  train_end: 329
+  validation_start: 330
+  validation_end: 404
+  holdout_start: 405
+  holdout_end: 480
+
+features:
+  lag_seconds: [10, 30, 60]
+  rolling_windows_seconds: [30, 60]
+  cross_sectional_columns:
+    - auction_imbalance_ratio
+    - book_size_imbalance
+    - wap_return_10s_bps
+    - spread_bps
+    - displayed_liquidity_log
+
+model:
+  candidate_models: [ridge, hist_gradient_boosting, lightgbm]
+  ridge_alphas: [0.1, 1.0, 10.0]
+  nonlinear_learning_rates: [0.03, 0.08]
+  nonlinear_leaf_counts: [15, 31]
+  nonlinear_iterations: 200
+  cv_folds: 4
+  minimum_train_dates: 120
+  max_tuning_rows_per_date: 2000
+  max_refit_rows_per_date: 5000
+
+execution:
+  group_quantiles: [0.1, 0.2]
+  minimum_absolute_predictions_bps: [0.0, 1.0]
+  maximum_spreads_bps: [5.0, 10.0]
+  minimum_displayed_liquidity: [0.0, 100.0]
+  primary_fee_per_side_bps: 0.1
+  fee_sensitivity_per_side_bps: [0.0, 0.1, 0.25, 0.5]
+  decision_interval_seconds: 60
+  bootstrap_repetitions: 1000

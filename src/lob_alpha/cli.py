@@ -1,4 +1,4 @@
-"""Command-line interface for the staged v0.2 research pipeline."""
+"""Command-line interface for the equity-primary and optional futures workflows."""
 
 from __future__ import annotations
 
@@ -17,6 +17,17 @@ from .acquisition import (
 from .config import load_config
 from .dataset import process_raw_directory
 from .definitions import verify_contract_definition
+from .equity_config import load_equity_config
+from .equity_data import audit_optiver_csv, prepare_optiver_parquet
+from .equity_fixture import write_synthetic_optiver
+from .equity_reporting import build_equity_report
+from .equity_study import (
+    HOLDOUT_ACKNOWLEDGEMENT,
+    freeze_equity_candidate,
+    run_equity_holdout_stage,
+    run_equity_train_stage,
+    run_equity_validation_stage,
+)
 from .feasibility import audit_session_resources
 from .fixture import make_mbp10_fixture
 from .ingest import (
@@ -30,6 +41,7 @@ from .ingest import (
 )
 from .manifest import build_run_manifest, write_json
 from .pipeline import process_session, write_table
+from .safe_zip import extract_optiver_train_csv
 from .sampling import session_bounds
 from .study import (
     freeze_candidate,
@@ -498,6 +510,172 @@ def _run_fixture_study(args: argparse.Namespace) -> int:
     return 0
 
 
+def _equity_audit(args: argparse.Namespace) -> int:
+    config = load_equity_config(args.config)
+    payload = audit_optiver_csv(
+        config,
+        input_path=args.input,
+        output_path=args.output,
+        metadata_only=args.metadata_only,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _equity_prepare(args: argparse.Namespace) -> int:
+    config = load_equity_config(args.config)
+    payload = prepare_optiver_parquet(
+        config,
+        input_path=args.input,
+        audit_path=args.audit,
+        output_dir=args.output_dir,
+    )
+    print(
+        json.dumps(
+            {
+                "prepared_manifest": str(
+                    Path(args.output_dir or config.data.prepared_dir) / "prepared_manifest.json"
+                ),
+                "rows": payload["rows"],
+                "partitions": len(payload["partitions"]),
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def _equity_train(args: argparse.Namespace) -> int:
+    config = load_equity_config(args.config)
+    payload = run_equity_train_stage(
+        config,
+        manifest_path=args.manifest,
+        output_dir=args.output_dir,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _equity_validate(args: argparse.Namespace) -> int:
+    config = load_equity_config(args.config)
+    payload = run_equity_validation_stage(
+        config,
+        manifest_path=args.manifest,
+        train_selection_path=args.train_selection,
+        output_dir=args.output_dir,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _equity_freeze(args: argparse.Namespace) -> int:
+    config = load_equity_config(args.config)
+    payload = freeze_equity_candidate(
+        config,
+        manifest_path=args.manifest,
+        candidate_path=args.candidate,
+        output_path=args.output,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _equity_holdout(args: argparse.Namespace) -> int:
+    config = load_equity_config(args.config)
+    payload = run_equity_holdout_stage(
+        config,
+        manifest_path=args.manifest,
+        frozen_candidate_path=args.frozen_candidate,
+        output_dir=args.output_dir,
+        acknowledge_one_shot=args.acknowledge_one_shot,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _equity_report(args: argparse.Namespace) -> int:
+    report, cv = build_equity_report(
+        train_dir=args.train_dir,
+        validation_dir=args.validation_dir,
+        holdout_dir=args.holdout_dir,
+        reports_dir=args.reports_dir,
+    )
+    print(json.dumps({"report": str(report), "cv_evidence": str(cv)}, indent=2))
+    return 0
+
+
+def _equity_extract_zip(args: argparse.Namespace) -> int:
+    output = extract_optiver_train_csv(args.zip, output_path=args.output)
+    print(json.dumps({"output": str(output.resolve()), "network_access": False}, indent=2))
+    return 0
+
+
+def _equity_fixture_study(args: argparse.Namespace) -> int:
+    config = load_equity_config(args.config)
+    root = Path(args.output_dir)
+    if root.exists() and any(root.iterdir()):
+        raise FileExistsError(f"refusing to overwrite synthetic equity study: {root}")
+    root.mkdir(parents=True, exist_ok=True)
+    raw = write_synthetic_optiver(config, root / "synthetic_train.csv")
+    audit_path = root / "schema_audit.json"
+    audit_optiver_csv(
+        config,
+        input_path=raw,
+        output_path=audit_path,
+        metadata_only=False,
+    )
+    prepared = root / "prepared"
+    prepare_optiver_parquet(
+        config,
+        input_path=raw,
+        audit_path=audit_path,
+        output_dir=prepared,
+    )
+    manifest = prepared / "prepared_manifest.json"
+    train = root / "train"
+    validation = root / "validation"
+    holdout = root / "holdout"
+    run_equity_train_stage(config, manifest_path=manifest, output_dir=train)
+    run_equity_validation_stage(
+        config,
+        manifest_path=manifest,
+        train_selection_path=train / "train_selection.json",
+        output_dir=validation,
+    )
+    frozen = root / "frozen_candidate.json"
+    freeze_equity_candidate(
+        config,
+        manifest_path=manifest,
+        candidate_path=validation / "selected_candidate.json",
+        output_path=frozen,
+    )
+    result = run_equity_holdout_stage(
+        config,
+        manifest_path=manifest,
+        frozen_candidate_path=frozen,
+        output_dir=holdout,
+        acknowledge_one_shot=HOLDOUT_ACKNOWLEDGEMENT,
+    )
+    report, cv = build_equity_report(
+        train_dir=train,
+        validation_dir=validation,
+        holdout_dir=holdout,
+        reports_dir=root / "reports",
+    )
+    print(
+        json.dumps(
+            {
+                "warning": "synthetic engineering fixture only; no empirical claims",
+                "holdout_mechanics": result["stage"],
+                "report": str(report),
+                "cv_evidence": str(cv),
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lob-alpha")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -696,6 +874,106 @@ def build_parser() -> argparse.ArgumentParser:
     fixture_study.add_argument("--config", default="configs/fixture_study.yaml")
     fixture_study.add_argument("--output-dir", default="artifacts/fixture-study")
     fixture_study.set_defaults(handler=_run_fixture_study)
+
+    equity_audit = subparsers.add_parser(
+        "equity-audit",
+        help="validate Optiver schema/identifiers without producing performance metrics",
+    )
+    equity_audit.add_argument("--config", default="configs/equity_close.yaml")
+    equity_audit.add_argument("--input")
+    equity_audit.add_argument("--output", default="data/interim/optiver_schema_audit.json")
+    equity_audit.add_argument(
+        "--metadata-only",
+        action="store_true",
+        help="exclude target from CSV reads; suitable for confirming the registration",
+    )
+    equity_audit.set_defaults(handler=_equity_audit)
+
+    equity_prepare = subparsers.add_parser(
+        "equity-prepare", help="stream validated Optiver CSV into causal per-date Parquet"
+    )
+    equity_prepare.add_argument("--config", default="configs/equity_close.yaml")
+    equity_prepare.add_argument("--input")
+    equity_prepare.add_argument("--audit", default="data/interim/optiver_schema_audit.json")
+    equity_prepare.add_argument("--output-dir")
+    equity_prepare.set_defaults(handler=_equity_prepare)
+
+    equity_train = subparsers.add_parser(
+        "equity-train", help="run train-only diagnostics and expanding-window CV"
+    )
+    equity_train.add_argument("--config", default="configs/equity_close.yaml")
+    equity_train.add_argument("--manifest", default="data/processed/optiver/prepared_manifest.json")
+    equity_train.add_argument("--output-dir", default="artifacts/equity/train")
+    equity_train.set_defaults(handler=_equity_train)
+
+    equity_validate = subparsers.add_parser(
+        "equity-validate", help="select the equity model and execution rule on validation"
+    )
+    equity_validate.add_argument("--config", default="configs/equity_close.yaml")
+    equity_validate.add_argument(
+        "--manifest", default="data/processed/optiver/prepared_manifest.json"
+    )
+    equity_validate.add_argument(
+        "--train-selection", default="artifacts/equity/train/train_selection.json"
+    )
+    equity_validate.add_argument("--output-dir", default="artifacts/equity/validation")
+    equity_validate.set_defaults(handler=_equity_validate)
+
+    equity_freeze = subparsers.add_parser(
+        "equity-freeze", help="content-lock model, preprocessing and execution before holdout"
+    )
+    equity_freeze.add_argument("--config", default="configs/equity_close.yaml")
+    equity_freeze.add_argument(
+        "--manifest", default="data/processed/optiver/prepared_manifest.json"
+    )
+    equity_freeze.add_argument(
+        "--candidate", default="artifacts/equity/validation/selected_candidate.json"
+    )
+    equity_freeze.add_argument("--output", default="artifacts/equity/frozen_candidate.json")
+    equity_freeze.set_defaults(handler=_equity_freeze)
+
+    equity_holdout = subparsers.add_parser(
+        "equity-holdout", help="run the explicitly acknowledged one-shot equity holdout"
+    )
+    equity_holdout.add_argument("--config", default="configs/equity_close.yaml")
+    equity_holdout.add_argument(
+        "--manifest", default="data/processed/optiver/prepared_manifest.json"
+    )
+    equity_holdout.add_argument(
+        "--frozen-candidate", default="artifacts/equity/frozen_candidate.json"
+    )
+    equity_holdout.add_argument("--output-dir", default="artifacts/equity/holdout")
+    equity_holdout.add_argument(
+        "--acknowledge-one-shot",
+        required=True,
+        metavar="EXACT_PHRASE",
+        help=f"must exactly equal {HOLDOUT_ACKNOWLEDGEMENT!r}",
+    )
+    equity_holdout.set_defaults(handler=_equity_holdout)
+
+    equity_report = subparsers.add_parser(
+        "equity-report", help="generate the claim-gated equity report and CV evidence"
+    )
+    equity_report.add_argument("--train-dir", default="artifacts/equity/train")
+    equity_report.add_argument("--validation-dir", default="artifacts/equity/validation")
+    equity_report.add_argument("--holdout-dir", default="artifacts/equity/holdout")
+    equity_report.add_argument("--reports-dir", default="artifacts/equity/reports")
+    equity_report.set_defaults(handler=_equity_report)
+
+    equity_extract = subparsers.add_parser(
+        "equity-extract-zip", help="safely extract only train.csv from a manually downloaded ZIP"
+    )
+    equity_extract.add_argument("--zip", required=True)
+    equity_extract.add_argument("--output", default="data/raw/optiver/train.csv")
+    equity_extract.set_defaults(handler=_equity_extract_zip)
+
+    equity_fixture = subparsers.add_parser(
+        "equity-run-synthetic",
+        help="exercise the complete equity workflow on unmistakably synthetic data",
+    )
+    equity_fixture.add_argument("--config", default="configs/equity_close_fixture.yaml")
+    equity_fixture.add_argument("--output-dir", default="artifacts/equity-fixture")
+    equity_fixture.set_defaults(handler=_equity_fixture_study)
     return parser
 
 

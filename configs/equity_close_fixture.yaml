@@ -1,0 +1,54 @@
+project:
+  name: synthetic-optiver-equity-closing-auction
+  seed: 20260316
+  source_kind: synthetic
+
+data:
+  raw_path: artifacts/equity-fixture/synthetic_train.csv
+  prepared_dir: artifacts/equity-fixture/prepared
+  expected_date_id_min: 0
+  expected_date_id_max: 11
+  sample_interval_seconds: 10
+  target_horizon_seconds: 60
+  target_definition: synthetic_index_relative_60s_bps_proxy
+  closing_second: 600
+  csv_chunk_rows: 500
+
+splits:
+  train_start: 0
+  train_end: 6
+  validation_start: 7
+  validation_end: 9
+  holdout_start: 10
+  holdout_end: 11
+
+features:
+  lag_seconds: [10, 30, 60]
+  rolling_windows_seconds: [30, 60]
+  cross_sectional_columns:
+    - auction_imbalance_ratio
+    - book_size_imbalance
+    - wap_return_10s_bps
+    - spread_bps
+    - displayed_liquidity_log
+
+model:
+  candidate_models: [ridge, hist_gradient_boosting]
+  ridge_alphas: [0.1, 1.0]
+  nonlinear_learning_rates: [0.05]
+  nonlinear_leaf_counts: [15]
+  nonlinear_iterations: 40
+  cv_folds: 2
+  minimum_train_dates: 3
+  max_tuning_rows_per_date: 200
+  max_refit_rows_per_date: 300
+
+execution:
+  group_quantiles: [0.25, 0.4]
+  minimum_absolute_predictions_bps: [0.0, 0.25]
+  maximum_spreads_bps: [10.0, 20.0]
+  minimum_displayed_liquidity: [0.0, 100.0]
+  primary_fee_per_side_bps: 0.1
+  fee_sensitivity_per_side_bps: [0.0, 0.1, 0.25]
+  decision_interval_seconds: 60
+  bootstrap_repetitions: 200

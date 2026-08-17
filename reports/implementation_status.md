@@ -1,6 +1,19 @@
 # Implementation status — exact-session feasibility phase
 
-## Completed
+## v0.3 equity-primary release
+
+The default public workflow is now the licensed Optiver equity closing-auction study described in
+`configs/equity_close.yaml` and `reports/equity_methodology.md`. Audit, bounded per-date preparation,
+causal features, mandatory baselines, chronological CV, validation selection, content-addressed
+freeze, prepared-study-wide one-shot sealing, executable quote simulation, partition-streamed
+evaluation, bounded categorical encoding, claim-anchored reporting, bounded safe ZIP import and a
+complete synthetic rehearsal are implemented. Predictive evidence uses the supplied Optiver
+index-relative target; quote-based P&L is separate. No real Optiver data or performance result is
+present.
+
+The v0.2 CME/Databento implementation below remains supported as an optional historical path.
+
+## Completed optional CME/Databento path
 
 - Typed, validated research configuration with disjoint chronological splits.
 - Pre-registered hypotheses and falsification conditions.
