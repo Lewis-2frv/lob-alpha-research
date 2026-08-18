@@ -1,0 +1,21 @@
+name: FI-2010 integrity CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  fi2010:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install FI-2010 and development dependencies
+        run: python -m pip install -e '.[dev,fi2010]'
+      - name: Ruff
+        run: python -m ruff check .
+      - name: FI-2010 regression suite
+        run: python -m unittest tests.test_fi2010 -v

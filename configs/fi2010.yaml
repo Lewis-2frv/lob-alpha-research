@@ -1,0 +1,55 @@
+study_id: fi2010_anchored_walk_forward
+seed: 20260817
+synthetic: false
+
+source:
+  outer_archive_size: 1830875986
+  outer_archive_sha256: bcc89a5aa7d8067dda98374393444eb885a4283a41fd33e323496380e057e1a6
+  inner_member: published/BenchmarkDatasets/BenchmarkDatasets.zip
+  dataset_id: 73eb48d7-4dbc-4a10-a52a-da745b47a649
+  pid: urn:nbn:fi:csc-kata20170601153214969115
+  title: Benchmark Dataset for Mid-Price Forecasting of Limit Order Book Data with Machine Learning Methods
+  licence: CC BY 4.0
+  paper_doi: 10.1002/for.2543
+
+data:
+  prepared_dir: data/raw/fi2010
+  representation: NoAuction/1.NoAuction_Zscore
+  feature_rows: [1, 144]
+  label_rows: [145, 149]
+  class_mapping: {1: up, 2: stationary, 3: down}
+  horizon_sampled_steps: [1, 2, 3, 5, 10]
+  horizon_underlying_events: [10, 20, 30, 50, 100]
+  primary_label_row: 4
+  development_folds: [1, 2, 3, 4, 5, 6, 7, 8]
+  final_fold: 9
+
+models:
+  # Interpretable/manual ladder. These candidates are registered before the
+  # library nonlinear models so the report can show what model complexity buys.
+  manual_pressure_temperature: 1.0
+  manual_pressure_stationary_logit: 0.45
+  diagonal_lda_shrinkage: 0.10
+  numpy_ridge_alphas: [0.1, 1.0, 10.0]
+  numpy_softmax_learning_rate: 0.02
+  numpy_softmax_l2: 0.001
+  numpy_softmax_epochs: 8
+  numpy_softmax_batch_size: 16384
+  sgd_alphas: [0.0001, 0.001]
+  sgd_max_iter: 300
+  # Bounded pre-holdout tuning grid. The historical sklearn HGB candidate remains
+  # in the candidate set even when LightGBM is installed, so broader tuning can
+  # only replace it if the anchored CF_1-CF_8 evidence is genuinely stronger.
+  lightgbm_learning_rates: [0.03, 0.05, 0.08]
+  lightgbm_num_leaves: [15, 31, 63]
+  lightgbm_estimators: 180
+  fallback_learning_rate: 0.08
+  fallback_max_leaf_nodes: 31
+  fallback_max_iter: 60
+
+selection:
+  primary_metric: macro_f1
+  first_tie_breaker: worst_fold_macro_f1
+  second_tie_breaker: lower_model_complexity
+  confidence_thresholds: [0.40, 0.50, 0.60, 0.70, 0.80]
+  minimum_directional_coverage: 0.02

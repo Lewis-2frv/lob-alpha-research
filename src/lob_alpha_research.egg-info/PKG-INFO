@@ -1,3 +1,34 @@
+Metadata-Version: 2.4
+Name: lob-alpha-research
+Version: 0.6.0
+Summary: Leakage-resistant FI-2010 LOB signal research with anchored validation
+Author: Lewis
+License: MIT
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+License-File: NOTICE-FI2010.md
+Requires-Dist: numpy>=2.0
+Requires-Dist: pandas>=2.2
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: scikit-learn>=1.5
+Requires-Dist: joblib>=1.4
+Requires-Dist: matplotlib>=3.9
+Provides-Extra: data
+Requires-Dist: databento>=0.63; extra == "data"
+Requires-Dist: pyarrow>=17; extra == "data"
+Requires-Dist: zstandard>=0.23; extra == "data"
+Provides-Extra: equity
+Requires-Dist: pyarrow>=17; extra == "equity"
+Requires-Dist: lightgbm>=4.6; extra == "equity"
+Provides-Extra: fi2010
+Requires-Dist: lightgbm>=4.6; extra == "fi2010"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: ruff>=0.9; extra == "dev"
+Dynamic: license-file
+
 # FI-2010 Equity Limit-Order-Book Signal Research
 
 A leakage-resistant, point-in-time research system for three-way mid-price direction classification

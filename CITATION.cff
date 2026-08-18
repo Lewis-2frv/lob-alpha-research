@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this research code, please cite the FI-2010 dataset/paper and this repository."
+title: "FI-2010 Equity Limit-Order-Book Signal Research"
+type: software
+authors:
+  - family-names: "Lewis"
+version: 0.6.0
+date-released: 2026-08-18
+license: MIT
+preferred-citation:
+  type: article
+  title: "Benchmark Dataset for Mid-Price Forecasting of Limit Order Book Data with Machine Learning Methods"
+  doi: "10.1002/for.2543"

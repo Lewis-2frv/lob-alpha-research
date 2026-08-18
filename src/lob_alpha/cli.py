@@ -29,6 +29,18 @@ from .equity_study import (
     run_equity_validation_stage,
 )
 from .feasibility import audit_session_resources
+from .fi2010_config import load_fi2010_config
+from .fi2010_data import audit_inner_archive, import_inner_archive, verify_outer_archive
+from .fi2010_fixture import run_synthetic_fi2010
+from .fi2010_reporting import build_fi2010_report, publish_fi2010_portfolio
+from .fi2010_study import (
+    HOLDOUT_ACKNOWLEDGEMENT as FI2010_HOLDOUT_ACKNOWLEDGEMENT,
+)
+from .fi2010_study import (
+    freeze_and_refit_fi2010,
+    run_fi2010_development,
+    run_fi2010_holdout,
+)
 from .fixture import make_mbp10_fixture
 from .ingest import (
     batch_job_status,
@@ -676,6 +688,101 @@ def _equity_fixture_study(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fi2010_import(args: argparse.Namespace) -> int:
+    config = load_fi2010_config(args.config)
+    if args.verify_only:
+        payload = verify_outer_archive(config, args.archive)
+    else:
+        payload = import_inner_archive(
+            config,
+            args.archive,
+            prepared_dir=args.prepared_dir,
+        )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _fi2010_audit(args: argparse.Namespace) -> int:
+    config = load_fi2010_config(args.config)
+    payload = audit_inner_archive(
+        config,
+        prepared_dir=args.prepared_dir,
+        validate_payloads=not args.metadata_only,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _fi2010_develop(args: argparse.Namespace) -> int:
+    config = load_fi2010_config(args.config)
+    payload = run_fi2010_development(
+        config,
+        prepared_dir=args.prepared_dir,
+        output_dir=args.output_dir,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _fi2010_freeze(args: argparse.Namespace) -> int:
+    config = load_fi2010_config(args.config)
+    payload = freeze_and_refit_fi2010(
+        config,
+        prepared_dir=args.prepared_dir,
+        development_results=args.development_results,
+        output_dir=args.output_dir,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _fi2010_holdout(args: argparse.Namespace) -> int:
+    config = load_fi2010_config(args.config)
+    payload = run_fi2010_holdout(
+        config,
+        prepared_dir=args.prepared_dir,
+        frozen_candidate=args.frozen_candidate,
+        final_model_manifest=args.final_model_manifest,
+        output_dir=args.output_dir,
+        acknowledgement=args.acknowledgement,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _fi2010_report(args: argparse.Namespace) -> int:
+    config = load_fi2010_config(args.config)
+    report, evidence = build_fi2010_report(
+        config,
+        prepared_dir=args.prepared_dir,
+        development_results=args.development_results,
+        freeze_dir=args.freeze_dir,
+        holdout_dir=args.holdout_dir,
+        output_dir=args.output_dir,
+    )
+    print(json.dumps({"report": str(report), "evidence": str(evidence)}, indent=2))
+    return 0
+
+
+def _fi2010_run_synthetic(args: argparse.Namespace) -> int:
+    config = load_fi2010_config(args.config)
+    payload = run_synthetic_fi2010(config, args.output_dir)
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _fi2010_publish(args: argparse.Namespace) -> int:
+    payload = publish_fi2010_portfolio(
+        args.report_dir,
+        repository_root=args.repository_root,
+        output_dir=args.output_dir,
+        require_claim_eligible=not args.allow_ineligible,
+        require_holdout=not args.allow_development_only,
+    )
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lob-alpha")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -974,6 +1081,117 @@ def build_parser() -> argparse.ArgumentParser:
     equity_fixture.add_argument("--config", default="configs/equity_close_fixture.yaml")
     equity_fixture.add_argument("--output-dir", default="artifacts/equity-fixture")
     equity_fixture.set_defaults(handler=_equity_fixture_study)
+
+    default_fi2010_archive = str(Path.home() / "Downloads" / "FI-2010-official.zip")
+    fi_import = subparsers.add_parser(
+        "fi2010-import",
+        help="verify the official outer archive and atomically import only its inner ZIP",
+    )
+    fi_import.add_argument("--config", default="configs/fi2010.yaml")
+    fi_import.add_argument("--archive", default=default_fi2010_archive)
+    fi_import.add_argument("--prepared-dir")
+    fi_import.add_argument("--verify-only", action="store_true")
+    fi_import.set_defaults(handler=_fi2010_import)
+
+    fi_audit = subparsers.add_parser(
+        "fi2010-audit",
+        help="audit paired development members and Train_CF_9 without opening Test_CF_9",
+    )
+    fi_audit.add_argument("--config", default="configs/fi2010.yaml")
+    fi_audit.add_argument("--prepared-dir")
+    fi_audit.add_argument(
+        "--metadata-only",
+        action="store_true",
+        help="validate central metadata only; normal audit also validates development payloads",
+    )
+    fi_audit.set_defaults(handler=_fi2010_audit)
+
+    fi_develop = subparsers.add_parser(
+        "fi2010-develop",
+        help="run independent paired anchored development folds CF_1 through CF_8",
+    )
+    fi_develop.add_argument("--config", default="configs/fi2010.yaml")
+    fi_develop.add_argument("--prepared-dir")
+    fi_develop.add_argument("--output-dir", default="artifacts/fi2010/development")
+    fi_develop.set_defaults(handler=_fi2010_develop)
+
+    fi_freeze = subparsers.add_parser(
+        "fi2010-freeze",
+        help="freeze the development choice and refit it on Train_CF_9 only",
+    )
+    fi_freeze.add_argument("--config", default="configs/fi2010.yaml")
+    fi_freeze.add_argument("--prepared-dir")
+    fi_freeze.add_argument(
+        "--development-results",
+        default="artifacts/fi2010/development/development_results.json",
+    )
+    fi_freeze.add_argument("--output-dir", default="artifacts/fi2010/freeze")
+    fi_freeze.set_defaults(handler=_fi2010_freeze)
+
+    fi_holdout = subparsers.add_parser(
+        "fi2010-holdout",
+        help="irreversibly release the source-bound one-shot CF_9 final holdout",
+    )
+    fi_holdout.add_argument("--config", default="configs/fi2010.yaml")
+    fi_holdout.add_argument("--prepared-dir")
+    fi_holdout.add_argument(
+        "--frozen-candidate",
+        default="artifacts/fi2010/freeze/frozen_candidate.json",
+    )
+    fi_holdout.add_argument(
+        "--final-model-manifest",
+        default="artifacts/fi2010/freeze/final_model_manifest.json",
+    )
+    fi_holdout.add_argument("--output-dir", default="artifacts/fi2010/holdout")
+    fi_holdout.add_argument(
+        "--acknowledgement",
+        required=True,
+        metavar="EXACT_PHRASE",
+        help=f"must exactly equal {FI2010_HOLDOUT_ACKNOWLEDGEMENT!r}",
+    )
+    fi_holdout.set_defaults(handler=_fi2010_holdout)
+
+    fi_report = subparsers.add_parser(
+        "fi2010-report",
+        help="build an integrity-gated predictive evidence report",
+    )
+    fi_report.add_argument("--config", default="configs/fi2010.yaml")
+    fi_report.add_argument("--prepared-dir")
+    fi_report.add_argument(
+        "--development-results",
+        default="artifacts/fi2010/development/development_results.json",
+    )
+    fi_report.add_argument("--freeze-dir", default="artifacts/fi2010/freeze")
+    fi_report.add_argument("--holdout-dir", default="artifacts/fi2010/holdout")
+    fi_report.add_argument("--output-dir", default="artifacts/fi2010/report")
+    fi_report.set_defaults(handler=_fi2010_report)
+
+    fi_fixture = subparsers.add_parser(
+        "fi2010-run-synthetic",
+        help="rehearse the full nested-ZIP and one-shot workflow on claim-ineligible data",
+    )
+    fi_fixture.add_argument("--config", default="configs/fi2010.yaml")
+    fi_fixture.add_argument("--output-dir", default="artifacts/fi2010-synthetic")
+    fi_fixture.set_defaults(handler=_fi2010_run_synthetic)
+
+    fi_publish = subparsers.add_parser(
+        "fi2010-publish",
+        help="publish validated small FI-2010 evidence and charts into docs/results/fi2010",
+    )
+    fi_publish.add_argument("--report-dir", default="artifacts/fi2010/report-final")
+    fi_publish.add_argument("--repository-root", default=".")
+    fi_publish.add_argument("--output-dir", default="docs/results/fi2010")
+    fi_publish.add_argument(
+        "--allow-development-only",
+        action="store_true",
+        help="publish development evidence without a final holdout; not the default portfolio mode",
+    )
+    fi_publish.add_argument(
+        "--allow-ineligible",
+        action="store_true",
+        help="testing only: permit synthetic or otherwise claim-ineligible evidence",
+    )
+    fi_publish.set_defaults(handler=_fi2010_publish)
     return parser
 
 

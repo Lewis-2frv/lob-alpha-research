@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lob-alpha-research"
-version = "0.3.0"
-description = "Causal, execution-aware equity closing-auction alpha research"
+version = "0.6.0"
+description = "Leakage-resistant FI-2010 LOB signal research with anchored validation"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
@@ -15,6 +15,7 @@ dependencies = [
   "pandas>=2.2",
   "PyYAML>=6.0",
   "scikit-learn>=1.5",
+  "joblib>=1.4",
   "matplotlib>=3.9",
 ]
 
@@ -26,6 +27,9 @@ data = [
 ]
 equity = [
   "pyarrow>=17",
+  "lightgbm>=4.6",
+]
+fi2010 = [
   "lightgbm>=4.6",
 ]
 dev = [

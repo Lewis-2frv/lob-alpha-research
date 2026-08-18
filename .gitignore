@@ -5,26 +5,29 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
-build/
-dist/
-*.egg-info/
 
-# Licensed or generated market data
+# Local data and empirical artifacts
 data/raw/
-data/interim/
 data/processed/
 artifacts/
+models/
 *.joblib
-/optiver-trading-at-the-close*.zip
+*.parquet
+*.feather
+*.npy
+*.npz
 
-# Credentials and local settings
+# Large archives and local credentials
+*.zip
+*.tar
+*.tar.gz
+*.7z
 .env
+*.pem
 *.key
 
-# Keep empty output directories
-!data/manifests/
-!data/manifests/.gitkeep
-!reports/figures/
-!reports/figures/.gitkeep
-!reports/tables/
-!reports/tables/.gitkeep
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

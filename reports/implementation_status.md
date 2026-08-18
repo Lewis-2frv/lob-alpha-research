@@ -1,76 +1,63 @@
-# Implementation status — exact-session feasibility phase
+# Implementation status — FI-2010 v0.6.0
 
-## v0.3 equity-primary release
 
-The default public workflow is now the licensed Optiver equity closing-auction study described in
-`configs/equity_close.yaml` and `reports/equity_methodology.md`. Audit, bounded per-date preparation,
-causal features, mandatory baselines, chronological CV, validation selection, content-addressed
-freeze, prepared-study-wide one-shot sealing, executable quote simulation, partition-streamed
-evaluation, bounded categorical encoding, claim-anchored reporting, bounded safe ZIP import and a
-complete synthetic rehearsal are implemented. Predictive evidence uses the supplied Optiver
-index-relative target; quote-based P&L is separate. No real Optiver data or performance result is
-present.
+## v0.6 portfolio completion
 
-The v0.2 CME/Databento implementation below remains supported as an optional historical path.
+The pre-holdout implementation now includes an interpretable-to-nonlinear development ladder: naive
+baselines, a fixed liquidity-pressure rule, from-scratch NumPy diagonal LDA/ridge/softmax classifiers,
+sklearn SGD, the historical HGB candidate and a bounded LightGBM grid. It also produces richer
+evidence metrics/plots, generated CV bullets, and a GitHub publisher that accepts only validated
+report bundles. The historical v0.4 numerical results
+remain reference diagnostics only until the real study is regenerated under v0.6 hashes.
 
-## Completed optional CME/Databento path
+## Pre-holdout audit status
 
-- Typed, validated research configuration with disjoint chronological splits.
-- Pre-registered hypotheses and falsification conditions.
-- Databento MBP-10 request builder and pre-download cost estimator.
-- Mandatory explicit cost ceiling for actual downloads.
-- Point-in-time definition download window and tick/multiplier verifier.
-- DBN/CSV event loaders and canonical MBP-10 schema checks.
-- Session data-quality report: ordering, duplicates, book crossing, depth ladder, nonnegative size/count and tick alignment.
-- Fixed 100 ms causal decision-state sampling with quote-age filtering.
-- Static book, microprice, depth, OFI, trade-flow, intensity and lagged-control features.
-- Four auditable future-midpoint labels with target/source timestamps and stale-label rejection.
-- Observable-depth marketable VWAP fills and exact round-trip P&L.
-- Transparent ridge baseline utilities.
-- Content-addressed processing manifests.
-- Deterministic engineering fixture and end-to-end CLI.
-- Tests for feature causality, label timing, split isolation, data quality, cost gating and execution arithmetic.
-- Cost-capped daily Databento batch submission, polling, download and SHA-256 verification.
-- Recursive daily-file discovery, compact per-session outputs and a hashed processed-data catalog.
-- Train-only feature IC, decile diagnostics, day-cluster bootstrap and expanding-window ridge selection.
-- Validation comparison against zero, microprice-only and imbalance-only baselines.
-- Validation-only horizon and execution-margin selection.
-- Hash-locked candidate freeze and non-overwriting, one-shot holdout command.
-- Fee, latency and displayed-quantity sensitivity with one raw-file load per session.
-- Generated research figures, empirical report and claim-gated CV bullet.
-- PowerShell scripts for setup, the real run through freeze and the final holdout.
-- A complete nine-session synthetic rehearsal of every stage.
-- DST-safe planning of complete configured weekdays with exact, end-exclusive UTC bounds.
-- Independent Databento metadata estimates for every intraday session and deterministic JSON plans.
-- Aggregate cost rejection and an independent boolean gate before any paid session request.
-- One-session-per-file compressed DBN acquisition through non-discoverable partial files and atomic renames.
-- Non-overwriting resume checks tied to manifest request parameters, local paths, byte sizes and SHA-256.
-- Conservative interruption handling that refuses automatic retries after a request may have incurred cost.
-- Local validation and promotion of complete interrupted DBN files without another paid request.
-- Serial three-session resource audit with raw bytes, decoded rows, pandas memory, wall time,
-  processed rows, quality rejections, output bytes, totals and single-session maxima.
-- Estimate-only-by-default PowerShell feasibility workflow with explicit free/paid step labels.
+The independent v0.4 audit found a publisher-class semantic error (`1` and `3` were named in the
+wrong directions) plus several integrity/reporting hardening opportunities. The source/config/code
+were corrected in v0.4.1 and retained in v0.6.0. **The real CF_9 test remains unopened.**
 
-## Deliberately not claimed
+The v0.4 development metrics below are retained only as historical diagnostics. They are no longer
+release-valid because the FI-2010 implementation/config hashes changed. Rerun the target-blind audit,
+CF_1-CF_8 development, candidate freeze and Train_CF_9 refit under v0.6.0 before final holdout release.
 
-- No real market data has been downloaded in this repository snapshot.
-- No empirical signal or profitability result exists yet.
-- The deterministic fixture is an engineering test only.
-- The candidate `ESM6` window still requires provider definition/liquidity confirmation.
-- No Databento estimate or paid time-series request was made while implementing this phase.
-- The resource audit intentionally exposes no alpha, IC, P&L, hit rate, model selection,
-  cross-validation or holdout result.
+## Implemented
 
-## Remaining manual/data-dependent gate
+- Strict registered configuration for the primary Z-score/no-auction representation, 144 features,
+  five publisher labels, class mapping and primary 50-event horizon.
+- Exact source-byte identity validation and safe nested-ZIP central-directory validation.
+- Atomic extraction of only the required inner ZIP into a gitignored source directory.
+- Separate source, development and holdout manifests; development never loads the holdout manifest
+  or CF_9 test payload.
+- Bounded float32 parsing and validation of 149 source rows with correct observation transposition.
+- Independent paired CF_1-CF_8 evaluation and per-fold memory release.
+- Fold-local class weighting, manual/from-scratch statistical baselines, bounded nonlinear model
+  comparison, deterministic candidate and confidence-rule selection, robustness horizons and
+  efficiency measurements.
+- Candidate/config/source/implementation freeze followed by Train_CF_9-only final refit.
+- Durable one-shot holdout claim, atomic seal and completion-anchor verification.
+- Development-only and anchored-holdout report modes with synthetic evidence made claim-ineligible.
+- Secure operator scripts, adversarial tests, methodology, handoff and attribution documentation.
 
-1. Configure `DATABENTO_API_KEY` locally.
-2. Run `estimate-session-costs` for `configs/sample_three_sessions.yaml`; this is metadata-only.
-3. If acceptable, provide both a finite cap and `-ConfirmPaidRequest` to the feasibility script.
-4. Review the audit's single-session maxima before estimating or acquiring the full study.
-5. Verify definition fields, generated daily quality manifests and validation outputs.
-6. Freeze the candidate, review it, then explicitly acknowledge the one-shot holdout.
+## Evidence boundary
 
-Databento 0.83.0 streams compressed DBN to disk and exposes chunked
-`DBNStore.to_df(count=...)` iteration. The current causal feature/label pipeline still needs
-one complete session DataFrame, so this implementation bounds that exposure to one session
-at a time and does not claim end-to-end chunked processing.
+The real CF_9 test member is not opened by audit, development, freeze/refit or development reporting.
+The exact official source was verified at `1,830,875,986` bytes and SHA-256
+`bcc89a5aa7d8067dda98374393444eb885a4283a41fd33e323496380e057e1a6`; the imported inner archive
+hashes to `cea93692a270724fa91e8f124da641db727d757e5e0f0bb85067709e9932f664`.
+
+The full CF_1-CF_8 comparison completed without sampling. The registered nonlinear fallback was
+selected at mean macro-F1 `0.553178` and worst-fold macro-F1 `0.508623`; confidence threshold `0.70`
+gave mean directional precision `0.780922` at mean coverage `0.080247`. These are development
+diagnostics, not a final-holdout result.
+
+The frozen candidate was refitted on all `362,400` Train_CF_9 observations and saved with a model
+SHA-256 of `1a159bbf0ae6749c60c28ef6667ab4aed45a6dac8d7e6de64fb3f9604a2e1c01`. The release stops there.
+No real holdout claim, seal, completion anchor or output exists.
+
+No executable-return claim is supported. FI-2010's anonymised normalized snapshots do not provide
+the market information needed to reconstruct defensible fills, costs or profitability.
+
+## Unsupported legacy paths
+
+Prior restricted-data study code remains in-tree for history but is excluded from the supported
+public workflow and from `reports/cv_evidence.md`.
