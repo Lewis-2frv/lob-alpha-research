@@ -1,0 +1,152 @@
+{
+  "claim_eligible": true,
+  "development": {
+    "best_baseline_mean_macro_f1": 0.173636567965893,
+    "best_fold_macro_f1": 0.5894592519354841,
+    "folds": 8,
+    "mean_fit_seconds": 5.046845474998918,
+    "mean_macro_f1": 0.5550397856781266,
+    "mean_prediction_throughput_observations_per_second": 394584.9105168873,
+    "std_macro_f1": 0.027427385250737207,
+    "uplift_vs_best_baseline_macro_f1": 0.3814032177122336,
+    "worst_fold_macro_f1": 0.5063123915630625
+  },
+  "executable_performance_claimed": false,
+  "final_refit": {
+    "fit_wall_seconds": 17.954739799999516,
+    "model_sha256": "cffe94588badf2c428ce4fa404981781962893f21b783b9228bb8d1a022822c1",
+    "train_observations": 362400
+  },
+  "holdout": {
+    "abstention_rate": 0.9399755769170555,
+    "balanced_accuracy": 0.5459914149092827,
+    "directional_coverage": 0.06002442308294455,
+    "directional_precision": 0.7584767866458008,
+    "macro_f1": 0.544604764883655,
+    "macro_f1_generalization_gap_vs_development_mean": -0.010435020794471672,
+    "mcc": 0.33916419927302227,
+    "multiclass_log_loss": 0.9233724478709697,
+    "observations": 31937,
+    "one_shot": true
+  },
+  "model_ladder": {
+    "best_manual_display_name": "NumPy ridge alpha=0.1",
+    "best_manual_mean_macro_f1": 0.44039843918080657,
+    "best_nonlinear_display_name": "LightGBM lr=0.08, leaves=15",
+    "best_nonlinear_mean_macro_f1": 0.5550397856781265,
+    "families": [
+      {
+        "display_name": "Always stationary",
+        "family": "Naive stationary",
+        "mean_macro_f1": 0.173636567965893,
+        "worst_fold_macro_f1": 0.14367440217105312
+      },
+      {
+        "display_name": "Class-prior baseline",
+        "family": "Class-prior baseline",
+        "mean_macro_f1": 0.1695349368302147,
+        "worst_fold_macro_f1": 0.13839532270658364
+      },
+      {
+        "display_name": "Manual liquidity-pressure rule",
+        "family": "Manual liquidity rule",
+        "mean_macro_f1": 0.2551514771574005,
+        "worst_fold_macro_f1": 0.22788365309108113
+      },
+      {
+        "display_name": "NumPy diagonal LDA shrinkage=0.1",
+        "family": "From-scratch diagonal LDA",
+        "mean_macro_f1": 0.367096174306328,
+        "worst_fold_macro_f1": 0.3216634824246611
+      },
+      {
+        "display_name": "NumPy ridge alpha=0.1",
+        "family": "From-scratch ridge",
+        "mean_macro_f1": 0.44039843918080657,
+        "worst_fold_macro_f1": 0.4206532741960119
+      },
+      {
+        "display_name": "NumPy softmax regression",
+        "family": "From-scratch softmax",
+        "mean_macro_f1": 0.43919015509686915,
+        "worst_fold_macro_f1": 0.41821112564582613
+      },
+      {
+        "display_name": "SGD log-loss alpha=0.001",
+        "family": "sklearn linear SGD",
+        "mean_macro_f1": 0.43218459350004157,
+        "worst_fold_macro_f1": 0.40320092962209736
+      },
+      {
+        "display_name": "HistGradientBoosting lr=0.08, leaves=31",
+        "family": "sklearn histogram boosting",
+        "mean_macro_f1": 0.5531779656334159,
+        "worst_fold_macro_f1": 0.5086225017901832
+      },
+      {
+        "display_name": "LightGBM lr=0.08, leaves=15",
+        "family": "LightGBM",
+        "mean_macro_f1": 0.5550397856781265,
+        "worst_fold_macro_f1": 0.5063123915630625
+      }
+    ],
+    "nonlinear_uplift_vs_best_manual_macro_f1": 0.11464134649731994
+  },
+  "selected_model": {
+    "display_name": "LightGBM lr=0.08, leaves=15",
+    "specification": {
+      "complexity": 8,
+      "learning_rate": 0.08,
+      "model": "lightgbm_multiclass",
+      "n_estimators": 180,
+      "num_leaves": 15
+    },
+    "specification_id": "{\"complexity\":8,\"learning_rate\":0.08,\"model\":\"lightgbm_multiclass\",\"n_estimators\":180,\"num_leaves\":15}"
+  },
+  "signal": {
+    "frontier": [
+      {
+        "mean_abstention_rate": 0.37822341971339024,
+        "mean_directional_coverage": 0.6217765802866098,
+        "mean_directional_precision": 0.5491959298751513,
+        "threshold": 0.4,
+        "worst_fold_directional_precision": 0.490869669959046
+      },
+      {
+        "mean_abstention_rate": 0.5906831095545826,
+        "mean_directional_coverage": 0.40931689044541736,
+        "mean_directional_precision": 0.6202285739467938,
+        "threshold": 0.5,
+        "worst_fold_directional_precision": 0.5625
+      },
+      {
+        "mean_abstention_rate": 0.7788683953799465,
+        "mean_directional_coverage": 0.2211316046200535,
+        "mean_directional_precision": 0.6964028165611575,
+        "threshold": 0.6,
+        "worst_fold_directional_precision": 0.6379877090181506
+      },
+      {
+        "mean_abstention_rate": 0.9100496058493305,
+        "mean_directional_coverage": 0.08995039415066956,
+        "mean_directional_precision": 0.7733370477830787,
+        "threshold": 0.7,
+        "worst_fold_directional_precision": 0.7258902077151336
+      },
+      {
+        "mean_abstention_rate": 0.9824623579915402,
+        "mean_directional_coverage": 0.01753764200845977,
+        "mean_directional_precision": 0.8400512437871714,
+        "threshold": 0.8,
+        "worst_fold_directional_precision": 0.789179104477612
+      }
+    ],
+    "mean_abstention_rate": 0.9100496058493305,
+    "mean_directional_coverage": 0.08995039415066956,
+    "mean_directional_precision": 0.7733370477830787,
+    "selected_threshold": 0.7,
+    "threshold": 0.7,
+    "worst_fold_directional_precision": 0.7258902077151336
+  },
+  "stage": "fi2010_portfolio_metrics"
+}

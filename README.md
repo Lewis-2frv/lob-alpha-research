@@ -13,18 +13,15 @@ holdout discipline.
 <!-- FI2010_RESULTS_START -->
 ## Results snapshot
 
-- **Historical real development benchmark (v0.4; regenerated v0.6 evidence required)**
-- **Anchored CF_1-CF_8 mean macro-F1:** 0.553
-- **Worst development fold:** 0.509
-- **Confidence-filtered development precision:** 78.1% at 8.0% coverage
-- **CF_9:** sealed and unevaluated
+- **Selected model:** LightGBM lr=0.08, leaves=15
+- **Anchored CF_1-CF_8 mean macro-F1:** 0.555
+- **Worst development fold:** 0.506
+- **Confidence-filtered development precision:** 77.3% at 9.0% coverage
+- **Best manual/from-scratch model:** NumPy ridge alpha=0.1 (0.440 mean macro-F1)
+- **One-shot CF_9 macro-F1:** 0.545
+- **One-shot CF_9 directional precision:** 75.8% at 6.0% coverage
 
-![Historical anchored development stability](docs/results/fi2010/historical_development_macro_f1.png)
-
-The historical figures above are retained only to show the already-observed development behaviour.
-Version 0.6 expands the development-only model ladder from a fixed microstructure rule through
-from-scratch statistical classifiers to boosted trees. The GitHub results block is automatically
-replaced by validated v0.6 evidence after the final one-shot release workflow.
+Full content-addressed evidence and plots: [`docs/results/fi2010/`](docs/results/fi2010/).
 <!-- FI2010_RESULTS_END -->
 
 ## What this project demonstrates
