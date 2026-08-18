@@ -25,17 +25,24 @@ data = [
   "pyarrow>=17",
   "zstandard>=0.23",
 ]
+
 equity = [
   "pyarrow>=17",
   "lightgbm>=4.6",
 ]
+
 fi2010 = [
   "lightgbm>=4.6",
 ]
+
 dev = [
   "pytest>=8.3",
   "pytest-cov>=5.0",
   "ruff>=0.9",
+  "databento>=0.63",
+  "pyarrow>=17",
+  "zstandard>=0.23",
+  "lightgbm>=4.6",
 ]
 
 [project.scripts]
